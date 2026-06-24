@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furton Research — Committee</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #E8E2D0;
+    --ink-dim:    #7A7060;
+    --ink-mid:    #A09880;
+    --paper:      #0C0C0A;
+    --paper-card: #0F0F0C;
+    --rule:       #222218;
+    --rule-mid:   #333328;
+
+    /* Per-investor accent colors */
+    --buffett:    #8B1A1A;
+    --aschenbrenner: #1A5C8B;
+    --marks:      #5A7A2E;
+    --greenblatt: #2E6B3E;
+    --wood:       #5A2E8B;
+
+    --buy:        #2D6A2D;
+    --pass:       #6A6050;
+    --short:      #8B1A1A;
+    --abstain:    #8B6A1A;
+
+    --mono:   'Courier Prime', monospace;
+    --serif:  'Playfair Display', serif;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 13px; line-height: 1.6; min-height: 100vh; }
+
+  /* ── Masthead ── */
+  .masthead {
+    border-bottom: 1px solid var(--rule-mid);
+    padding: 16px 28px;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .masthead-title { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .masthead-sub { font-size: 10px; color: var(--ink-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+  .masthead-sep { color: var(--rule-mid); font-size: 20px; }
+  .server-status { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #444; transition: background 0.3s; }
+  .status-dot.online { background: var(--buy); }
+  .status-dot.offline { background: var(--short); }
+
+
+  /* ── Tab navigation ── */
+  .tab-nav {
+    display: flex; border-bottom: 1px solid var(--rule-mid);
+    padding: 0 28px; gap: 0;
+  }
+  .tab-btn {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--ink-dim); font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 14px 20px;
+    cursor: pointer; transition: all 0.15s; margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--ink-mid); }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab-view { display: none; }
+  .tab-view.active { display: block; }
+
+  /* ── Screener ── */
+  .screener-controls {
+    padding: 20px 28px; border-bottom: 1px solid var(--rule);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .screener-run-btn {
+    background: none; border: 1px solid var(--ink); color: var(--ink);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 11px 24px; cursor: pointer; transition: all 0.15s;
+  }
+  .screener-run-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+  .screener-run-btn:disabled { border-color: var(--rule-mid); color: #444; cursor: not-allowed; }
+  .screener-ctrl-btn {
+    background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 11px 18px; cursor: pointer; transition: all 0.15s;
+  }
+  .screener-ctrl-btn:hover:not(:disabled) { border-color: var(--ink-dim); color: var(--ink); }
+  .screener-ctrl-btn:disabled { color: #333; border-color: var(--rule); cursor: not-allowed; }
+
+  .screener-progress { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 240px; }
+  .screener-progress-bar { height: 6px; background: var(--rule-mid); width: 100%; }
+  .screener-progress-fill { height: 100%; background: var(--ink); width: 0%; transition: width 0.4s ease-out; }
+  .screener-progress-label { font-size: 9px; color: var(--ink-dim); letter-spacing: 0.06em; }
+  .screener-cost { font-size: 10px; color: var(--ink-mid); }
+
+  .screener-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .screener-table thead th {
+    text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule-mid);
+    font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); font-weight: 400;
+  }
+  .screener-table tbody td { padding: 11px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .screener-table tbody tr { transition: background 0.15s; }
+  .screener-table tbody tr:hover { background: rgba(255,255,255,0.015); }
+  .screener-table tbody tr.processing { background: rgba(255,255,255,0.03); }
+
+  .sr-rank { font-family: var(--serif); font-size: 15px; color: var(--ink-dim); width: 36px; }
+  .sr-ticker { font-weight: 700; font-size: 12px; }
+  .sr-name { font-size: 9px; color: var(--ink-dim); }
+  .sr-position { font-family: var(--serif); font-weight: 700; font-size: 14px; }
+  .sr-position.BUY { color: var(--buy); }
+  .sr-position.PASS { color: var(--pass); }
+  .sr-position.SHORT { color: var(--short); }
+  .sr-score { font-size: 12px; }
+  .sr-votes { display: flex; gap: 3px; align-items: center; }
+  .sr-vote-dot { width: 14px; height: 14px; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: var(--paper); font-weight: 700; }
+  .sr-pending { color: var(--rule-mid); font-style: italic; font-size: 10px; }
+  .sr-expand-btn { background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim); font-family: var(--mono); font-size: 8px; padding: 3px 8px; cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; }
+  .sr-expand-btn:hover { border-color: var(--ink-dim); color: var(--ink); }
+  .sr-statement-row td { background: #0A0A08; padding: 14px 18px; }
+  .sr-statement-text { font-size: 11px; line-height: 1.7; color: var(--ink); font-style: italic; max-width: 900px; }
+  .sr-statement-label { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+
+  .ai-badge { font-size: 7px; padding: 1px 4px; border: 1px solid var(--aschenbrenner); color: var(--aschenbrenner); letter-spacing: 0.06em; margin-left: 4px; }
+
+  /* Screener mode toggle */
+  .screener-mode { display: flex; gap: 4px; border: 1px solid var(--rule-mid); padding: 3px; }
+  .mode-option {
+    display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+    cursor: pointer; font-size: 10px; color: var(--ink-dim); transition: all 0.15s;
+  }
+  .mode-option:has(input:checked) { background: rgba(255,255,255,0.04); color: var(--ink); }
+  .mode-option input { accent-color: var(--ink); width: 11px; height: 11px; cursor: pointer; }
+  .mode-sub { font-size: 8px; color: var(--ink-dim); letter-spacing: 0.04em; text-transform: uppercase; display: block; }
+
+  /* Skipped deliberation badge */
+  .sr-skipped-tag {
+    font-size: 8px; color: var(--amber); border: 1px solid var(--amber);
+    padding: 1px 6px; letter-spacing: 0.04em; text-transform: uppercase;
+    display: inline-block; margin-left: 6px;
+  }
+  .sr-statement-text.skipped { color: var(--amber); font-style: normal; }
+
+  /* Portfolio panel */
+  .portfolio-header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 18px 0 16px; border-bottom: 1px solid var(--rule); margin-bottom: 18px; }
+  .portfolio-title { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+  .portfolio-sub { font-size: 9px; color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+  .portfolio-capital { margin-left: auto; font-size: 11px; color: var(--ink-mid); }
+  .portfolio-capital input {
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink);
+    font-family: var(--mono); font-size: 12px; padding: 5px 8px; width: 90px; outline: none;
+  }
+  .portfolio-capital input:focus { border-color: #555540; }
+  .portfolio-body { display: flex; gap: 36px; align-items: center; flex-wrap: wrap; }
+  .portfolio-chart-wrap { flex-shrink: 0; }
+  .portfolio-legend { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 2px; }
+  .pf-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--rule); font-size: 11px; }
+  .pf-row:hover { background: rgba(255,255,255,0.015); }
+  .pf-swatch { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+  .pf-ticker { font-weight: 700; width: 52px; }
+  .pf-name { color: var(--ink-dim); font-size: 9px; flex: 1; }
+  .pf-weight { font-family: var(--serif); font-size: 13px; min-width: 50px; text-align: right; }
+  .pf-dollars { color: var(--ink-mid); min-width: 80px; text-align: right; font-size: 11px; }
+  .pf-empty { color: var(--ink-dim); font-style: italic; font-size: 11px; padding: 20px 0; }
+  .pf-total { display: flex; align-items: center; gap: 10px; padding: 10px 8px; margin-top: 4px; font-size: 11px; color: var(--ink-mid); border-top: 1px solid var(--rule-mid); }
+  .pf-total .pf-weight, .pf-total .pf-dollars { color: var(--ink); }
+
+  /* ── Input zone ── */
+  .input-zone {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+  .input-left { display: flex; flex-direction: column; gap: 8px; }
+  .input-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+  .ticker-row { display: flex; gap: 8px; }
+  input[type="text"] {
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink);
+    font-family: var(--mono); font-size: 13px; padding: 9px 14px; outline: none;
+    flex: 1; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: #555540; }
+  input[type="text"]::placeholder { color: #2A2A1A; }
+  .enrich-btn {
+    background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 9px 16px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .enrich-btn:hover:not(:disabled) { border-color: #555540; color: var(--ink); }
+  .enrich-btn:disabled { color: #333; cursor: not-allowed; }
+  .enrich-status { font-size: 9px; color: var(--ink-dim); min-height: 13px; }
+
+  textarea {
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink);
+    font-family: var(--mono); font-size: 12px; line-height: 1.65;
+    padding: 10px 14px; outline: none; resize: vertical; min-height: 320px;
+    width: 100%; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #555540; }
+  textarea::placeholder { color: #1A1A10; }
+
+  .submit-zone { display: flex; flex-direction: column; gap: 8px; padding-top: 18px; }
+
+  /* Committee composition block */
+  .composition-block {
+    border: 1px solid var(--rule-mid);
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .composition-label {
+    font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .composition-base {
+    font-size: 10px; color: var(--ink-mid);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .composition-base .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .composition-base .dot:last-of-type { margin-right: 6px; }
+  .dot-buffett    { background: var(--buffett); }
+  .dot-marks      { background: var(--marks); }
+  .dot-greenblatt { background: var(--greenblatt); }
+  .dot-wood       { background: var(--wood); }
+
+  .composition-toggle {
+    display: flex; align-items: flex-start; gap: 9px;
+    cursor: pointer; padding: 9px;
+    border: 1px solid var(--rule);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .composition-toggle:hover { border-color: var(--aschenbrenner); }
+  .composition-toggle.active {
+    border-color: var(--aschenbrenner);
+    background: rgba(26, 92, 139, 0.08);
+  }
+  .composition-toggle input {
+    accent-color: var(--aschenbrenner);
+    width: 13px; height: 13px; cursor: pointer; margin-top: 1px; flex-shrink: 0;
+  }
+  .composition-toggle-text { display: flex; flex-direction: column; gap: 3px; }
+  .composition-toggle-name {
+    font-size: 11px; color: var(--aschenbrenner); font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .composition-toggle-hint {
+    font-size: 9px; color: var(--ink-dim); line-height: 1.5;
+  }
+  .submit-btn {
+    background: none; border: 1px solid var(--ink-dim); color: var(--ink);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 11px 24px; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .submit-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .submit-btn:disabled { border-color: var(--rule-mid); color: #444; cursor: not-allowed; }
+  .submit-btn.secondary { border-color: var(--rule-mid); color: var(--ink-dim); font-size: 10px; }
+  .submit-btn.secondary:hover:not(:disabled) { border-color: var(--ink-dim); color: var(--ink); background: none; }
+  .cost-estimate { font-size: 9px; color: var(--ink-dim); text-align: center; }
+
+  /* ── Phase indicator ── */
+  .phase-bar {
+    padding: 10px 28px;
+    border-bottom: 1px solid var(--rule);
+    display: flex; align-items: center; gap: 16px;
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .phase-step { display: flex; align-items: center; gap: 6px; }
+  .phase-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rule-mid); transition: background 0.3s; }
+  .phase-dot.active { background: var(--ink); }
+  .phase-dot.done { background: var(--buy); }
+  .phase-sep { color: var(--rule-mid); }
+
+  /* ── Committee grid ── */
+  .committee-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .investor-col {
+    border-right: 1px solid var(--rule);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    min-height: 420px;
+    transition: opacity 0.3s;
+  }
+  .investor-col.excluded {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .investor-col:last-child { border-right: none; }
+
+  .investor-header {
+    display: flex; flex-direction: column; gap: 4px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--rule);
+  }
+  .investor-initial-sm { font-family: var(--serif); font-size: 11px; color: var(--ink-dim); }
+  .investor-name-sm { font-family: var(--serif); font-size: 13px; font-weight: 700; line-height: 1.2; }
+
+  /* Per-investor accent borders */
+  .col-buffett    .investor-header { border-color: var(--buffett); }
+  .col-aschenbrenner .investor-header { border-color: var(--aschenbrenner); }
+  .col-marks      .investor-header { border-color: var(--marks); }
+  .col-greenblatt .investor-header { border-color: var(--greenblatt); }
+  .col-wood       .investor-header { border-color: var(--wood); }
+
+  .verdict-badge {
+    font-family: var(--serif); font-size: 18px; font-weight: 700;
+    min-height: 24px;
+  }
+  .verdict-badge.BUY     { color: var(--buy); }
+  .verdict-badge.PASS    { color: var(--pass); }
+  .verdict-badge.SHORT   { color: var(--short); }
+  .verdict-badge.ABSTAIN { color: var(--abstain); }
+  .verdict-badge.pending { color: var(--rule-mid); font-size: 11px; font-family: var(--mono); font-weight: 400; font-style: italic; }
+
+  .conviction-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .conviction-bar { flex: 1; height: 4px; background: var(--rule-mid); }
+  .conviction-fill { height: 100%; transition: width 1s ease-out; }
+  .col-buffett    .conviction-fill { background: var(--buffett); }
+  .col-aschenbrenner .conviction-fill { background: var(--aschenbrenner); }
+  .col-marks      .conviction-fill { background: var(--marks); }
+  .col-greenblatt .conviction-fill { background: var(--greenblatt); }
+  .col-wood       .conviction-fill { background: var(--wood); }
+  .conviction-num { font-size: 10px; color: var(--ink-dim); min-width: 22px; }
+
+  .verdict-text {
+    font-size: 11px; line-height: 1.6; color: var(--ink-mid);
+    flex: 1; overflow-y: auto; max-height: 220px;
+    scrollbar-width: thin; scrollbar-color: var(--rule-mid) transparent;
+  }
+
+  .deliberation-response {
+    font-size: 11px; line-height: 1.6; color: var(--ink);
+    border-top: 1px solid var(--rule);
+    padding-top: 8px; margin-top: 4px;
+    overflow-y: auto; max-height: 200px;
+    scrollbar-width: thin; scrollbar-color: var(--rule-mid) transparent;
+  }
+  .deliberation-label { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 4px; }
+
+  .conviction-delta { font-size: 9px; }
+  .delta-up   { color: var(--buy); }
+  .delta-down { color: var(--short); }
+  .delta-same { color: var(--ink-dim); }
+
+  /* ── Committee verdict ── */
+  .committee-verdict {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .committee-position {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .committee-position-label { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+  .committee-position-badge { font-family: var(--serif); font-size: 36px; font-weight: 700; line-height: 1; }
+  .committee-position-badge.BUY   { color: var(--buy); }
+  .committee-position-badge.PASS  { color: var(--pass); }
+  .committee-position-badge.SHORT { color: var(--short); }
+  .committee-position-badge.TBD   { color: var(--rule-mid); }
+
+  .committee-score-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .committee-score-label { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }
+  .committee-score-bar { height: 8px; background: var(--rule-mid); position: relative; width: 200px; }
+  .committee-score-center { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--rule-mid); }
+  .committee-score-fill { position: absolute; height: 100%; transition: width 1s ease-out, left 1s ease-out; }
+  .committee-score-fill.positive { background: var(--buy); }
+  .committee-score-fill.negative { background: var(--short); }
+  .committee-score-num { font-size: 11px; color: var(--ink-mid); }
+
+  .committee-synthesis {
+    flex: 1;
+  }
+  .synthesis-label { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .synthesis-text { font-size: 12px; line-height: 1.75; color: var(--ink); font-style: italic; }
+  .synthesis-pending { font-size: 11px; color: var(--ink-dim); font-style: italic; }
+
+  .committee-actions { display: flex; flex-direction: column; gap: 6px; }
+
+  /* ── Loading dots ── */
+  .loading-dots { display: inline-flex; gap: 3px; }
+  .loading-dots span { width: 3px; height: 3px; background: var(--ink-dim); border-radius: 50%; animation: ldpulse 1.2s ease-in-out infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes ldpulse { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* ── Cost tracker ── */
+  .cost-bar {
+    padding: 8px 28px;
+    border-top: 1px solid var(--rule);
+    display: flex; gap: 20px; align-items: center;
+    font-size: 9px; color: var(--ink-dim); letter-spacing: 0.06em;
+  }
+  .cost-item { display: flex; gap: 6px; }
+  .cost-label { color: var(--ink-dim); }
+  .cost-value { color: var(--ink-mid); }
+
+  /* ── Empty state ── */
+  .empty-state { color: var(--rule-mid); font-size: 11px; font-style: italic; padding: 8px 0; }
+
+  /* ── Error ── */
+  .error-msg { font-size: 11px; color: var(--short); padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- Masthead -->
+<div class="masthead">
+  <div class="masthead-title">Furton Research</div>
+  <div class="masthead-sep">·</div>
+  <div class="masthead-sub">Committee Engine</div>
+  <div class="server-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusLabel">Checking...</span>
+  </div>
+</div>
+
+<!-- Tab navigation -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="tab-single-btn" onclick="switchTab('single')">Single Evaluation</button>
+  <button class="tab-btn" id="tab-screener-btn" onclick="switchTab('screener')">Dow 30 Screener</button>
+</div>
+
+<!-- ════════ SINGLE EVALUATION TAB ════════ -->
+<div class="tab-view active" id="tab-single">
+
+<!-- Input zone -->
+<div class="input-zone">
+  <div class="input-left">
+    <div class="input-label">Ticker or company name</div>
+    <div class="ticker-row">
+      <input type="text" id="tickerInput" placeholder="e.g. MSFT, KO, NVDA, JPM"
+        onkeydown="if(event.key==='Enter') enrich()"
+      />
+      <button class="enrich-btn" id="enrichBtn" onclick="enrich()">Enrich →</button>
+    </div>
+    <div class="enrich-status" id="enrichStatus"></div>
+    <div class="input-label" style="margin-top:4px;">Investment brief</div>
+    <textarea id="brief" placeholder="Click Enrich to auto-populate with live market data, or paste your own investment brief here.
+
+The committee will evaluate this brief independently, then deliberate, and produce a weighted verdict with an official statement."></textarea>
+  </div>
+
+  <div class="submit-zone">
+    <div class="composition-block">
+      <div class="composition-label">Committee composition</div>
+      <div class="composition-base">
+        <span class="dot dot-buffett"></span>
+        <span class="dot dot-marks"></span>
+        <span class="dot dot-greenblatt"></span>
+        <span class="dot dot-wood"></span>
+        4 core members always vote
+      </div>
+      <label class="composition-toggle" id="aschToggle">
+        <input type="checkbox" id="includeAschenbrenner" onchange="toggleAschenbrenner()" />
+        <span class="composition-toggle-text">
+          <span class="composition-toggle-name">+ Add Leopold Aschenbrenner</span>
+          <span class="composition-toggle-hint">Include for AI-exposed stocks (MSFT, AAPL, NVDA, AMZN, CRM). Skip for consumer staples, financials, industrials.</span>
+        </span>
+      </label>
+    </div>
+
+    <button class="submit-btn" id="runBlindBtn" onclick="runBlind()">
+      Convene Committee →
+    </button>
+    <button class="submit-btn secondary" id="runDeliberateBtn" onclick="runDeliberate()" disabled>
+      Begin Deliberation →
+    </button>
+    <button class="submit-btn secondary" id="runSynthesizeBtn" onclick="runSynthesize()" disabled>
+      Draft Statement (Opus)
+    </button>
+    <div class="cost-estimate" id="costEstimate">≈ $0.05 enrich · $0.30 blind · $0.25 deliberate · $0.05 synthesis</div>
+  </div>
+</div>
+
+<!-- Phase bar -->
+<div class="phase-bar">
+  <div class="phase-step"><div class="phase-dot" id="phase1dot"></div>Blind evaluation</div>
+  <div class="phase-sep">→</div>
+  <div class="phase-step"><div class="phase-dot" id="phase2dot"></div>Deliberation</div>
+  <div class="phase-sep">→</div>
+  <div class="phase-step"><div class="phase-dot" id="phase3dot"></div>Committee statement</div>
+  <div class="phase-sep">→</div>
+  <div class="phase-step"><div class="phase-dot" id="phase4dot"></div>Decision logged</div>
+</div>
+
+<!-- Committee grid -->
+<div class="committee-grid">
+  <!-- Buffett -->
+  <div class="investor-col col-buffett" id="col-buffett">
+    <div class="investor-header">
+      <div class="investor-initial-sm">W.B.</div>
+      <div class="investor-name-sm">Warren Buffett</div>
+    </div>
+    <div class="verdict-badge pending" id="badge-buffett">awaiting</div>
+    <div class="conviction-bar-wrap">
+      <div class="conviction-bar"><div class="conviction-fill" id="bar-buffett" style="width:0%"></div></div>
+      <div class="conviction-num" id="conv-buffett">—</div>
+    </div>
+    <div class="verdict-text empty-state" id="text-buffett">Fundamental Value & Compounding</div>
+    <div class="deliberation-response" id="delib-buffett" style="display:none"></div>
+  </div>
+
+  <!-- Aschenbrenner -->
+  <div class="investor-col col-aschenbrenner" id="col-aschenbrenner">
+    <div class="investor-header">
+      <div class="investor-initial-sm">L.A.</div>
+      <div class="investor-name-sm">Leopold Aschenbrenner</div>
+    </div>
+    <div class="verdict-badge pending" id="badge-aschenbrenner">awaiting</div>
+    <div class="conviction-bar-wrap">
+      <div class="conviction-bar"><div class="conviction-fill" id="bar-aschenbrenner" style="width:0%"></div></div>
+      <div class="conviction-num" id="conv-aschenbrenner">—</div>
+    </div>
+    <div class="verdict-text empty-state" id="text-aschenbrenner">Not included in this evaluation</div>
+    <div class="deliberation-response" id="delib-aschenbrenner" style="display:none"></div>
+  </div>
+
+  <!-- Marks -->
+  <div class="investor-col col-marks" id="col-marks">
+    <div class="investor-header">
+      <div class="investor-initial-sm">H.M.</div>
+      <div class="investor-name-sm">Howard Marks</div>
+    </div>
+    <div class="verdict-badge pending" id="badge-marks">awaiting</div>
+    <div class="conviction-bar-wrap">
+      <div class="conviction-bar"><div class="conviction-fill" id="bar-marks" style="width:0%"></div></div>
+      <div class="conviction-num" id="conv-marks">—</div>
+    </div>
+    <div class="verdict-text empty-state" id="text-marks">Risk & Cycle Awareness</div>
+    <div class="deliberation-response" id="delib-marks" style="display:none"></div>
+  </div>
+
+  <!-- Greenblatt -->
+  <div class="investor-col col-greenblatt" id="col-greenblatt">
+    <div class="investor-header">
+      <div class="investor-initial-sm">J.G.</div>
+      <div class="investor-name-sm">Joel Greenblatt</div>
+    </div>
+    <div class="verdict-badge pending" id="badge-greenblatt">awaiting</div>
+    <div class="conviction-bar-wrap">
+      <div class="conviction-bar"><div class="conviction-fill" id="bar-greenblatt" style="width:0%"></div></div>
+      <div class="conviction-num" id="conv-greenblatt">—</div>
+    </div>
+    <div class="verdict-text empty-state" id="text-greenblatt">Quantitative Value & Special Situations</div>
+    <div class="deliberation-response" id="delib-greenblatt" style="display:none"></div>
+  </div>
+
+  <!-- Wood -->
+  <div class="investor-col col-wood" id="col-wood">
+    <div class="investor-header">
+      <div class="investor-initial-sm">C.W.</div>
+      <div class="investor-name-sm">Cathie Wood</div>
+    </div>
+    <div class="verdict-badge pending" id="badge-wood">awaiting</div>
+    <div class="conviction-bar-wrap">
+      <div class="conviction-bar"><div class="conviction-fill" id="bar-wood" style="width:0%"></div></div>
+      <div class="conviction-num" id="conv-wood">—</div>
+    </div>
+    <div class="verdict-text empty-state" id="text-wood">Disruptive Growth & Platform Convergence</div>
+    <div class="deliberation-response" id="delib-wood" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Committee verdict -->
+<div class="committee-verdict">
+  <div class="committee-position">
+    <div class="committee-position-label">Committee</div>
+    <div class="committee-position-badge TBD" id="committeePosition">—</div>
+    <div style="font-size:9px;color:var(--ink-dim);margin-top:4px;" id="committeePhase">awaiting evaluation</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:10px;flex:1;">
+    <div class="committee-score-wrap">
+      <div class="committee-score-label">Weighted conviction score (−1 to +1)</div>
+      <div class="committee-score-bar">
+        <div class="committee-score-center"></div>
+        <div class="committee-score-fill" id="scoreBar" style="width:0%;left:50%"></div>
+      </div>
+      <div class="committee-score-num" id="scoreNum">—</div>
+    </div>
+
+    <div class="committee-synthesis" id="synthesisZone">
+      <div class="synthesis-label">Official committee statement</div>
+      <div class="synthesis-pending" id="synthesisText">Awaiting deliberation and Opus synthesis...</div>
+    </div>
+  </div>
+
+  <div class="committee-actions">
+    <div style="font-size:9px;color:var(--ink-dim);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Log decision</div>
+    <button class="submit-btn secondary" id="logBtn" onclick="logDecision()" disabled style="font-size:10px;padding:8px 14px;">
+      Save to log →
+    </button>
+    <button class="submit-btn secondary" onclick="resetAll()" style="font-size:10px;padding:8px 14px;">
+      New evaluation
+    </button>
+  </div>
+</div>
+
+<!-- Cost tracker -->
+<div class="cost-bar">
+  <div class="cost-item"><span class="cost-label">Session:</span><span class="cost-value" id="sessionCost">$0.0000</span></div>
+  <div class="cost-item"><span class="cost-label">Enrichment:</span><span class="cost-value" id="enrichCost">—</span></div>
+  <div class="cost-item"><span class="cost-label">Blind votes:</span><span class="cost-value" id="blindCost">—</span></div>
+  <div class="cost-item"><span class="cost-label">Deliberation:</span><span class="cost-value" id="deliberateCost">—</span></div>
+  <div class="cost-item"><span class="cost-label">Synthesis (Opus):</span><span class="cost-value" id="synthesisCost">—</span></div>
+  <div class="cost-item" style="margin-left:auto;"><span class="cost-label">Model:</span><span class="cost-value">Haiku · Sonnet · Opus</span></div>
+</div>
+
+</div><!-- ════════ END SINGLE EVALUATION TAB ════════ -->
+
+<!-- ════════ DOW 30 SCREENER TAB ════════ -->
+<div class="tab-view" id="tab-screener">
+
+  <div class="screener-controls">
+    <button class="screener-run-btn" id="screenerRunBtn" onclick="startScreener()">
+      Run Dow 30 Screener →
+    </button>
+    <button class="screener-ctrl-btn" id="screenerPauseBtn" onclick="pauseScreener()" disabled>Pause</button>
+    <button class="screener-ctrl-btn" id="screenerStopBtn" onclick="stopScreener()" disabled>Stop</button>
+    <button class="screener-ctrl-btn" id="screenerExportBtn" onclick="exportScreener()" disabled>Export JSON</button>
+
+    <div class="screener-mode">
+      <label class="mode-option">
+        <input type="radio" name="screenerMode" value="realtime" checked onchange="updateModeHint()" />
+        <span>Real-time <span class="mode-sub">full cost · immediate</span></span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="screenerMode" value="batch" onchange="updateModeHint()" />
+        <span>Batch <span class="mode-sub">50% off · async</span></span>
+      </label>
+    </div>
+
+    <div class="screener-progress">
+      <div class="screener-progress-bar"><div class="screener-progress-fill" id="screenerProgressFill"></div></div>
+      <div class="screener-progress-label" id="screenerProgressLabel">Ready — 30 stocks queued. Two-stage filter: blind vote on all 30, deliberation only on high-signal stocks.</div>
+    </div>
+    <div class="screener-cost" id="screenerCost">$0.0000</div>
+  </div>
+
+  <div id="portfolioPanel" style="display:none; padding: 0 28px 20px;">
+    <div class="portfolio-header">
+      <div class="portfolio-title">Suggested Portfolio</div>
+      <div class="portfolio-sub">Long-only · weighted by committee conviction · BUY-rated stocks only · 25% per-name cap</div>
+      <div class="portfolio-capital">
+        <label>Capital to deploy: $<input type="text" id="portfolioCapital" value="10,000" oninput="renderPortfolio()" /></label>
+      </div>
+    </div>
+    <div class="portfolio-body">
+      <div class="portfolio-chart-wrap">
+        <svg id="portfolioPie" viewBox="0 0 200 200" width="220" height="220"></svg>
+      </div>
+      <div class="portfolio-legend" id="portfolioLegend"></div>
+    </div>
+  </div>
+
+  <div style="padding: 0 28px 40px;">
+    <table class="screener-table">
+      <thead>
+        <tr>
+          <th style="width:36px;">#</th>
+          <th style="width:130px;">Stock</th>
+          <th style="width:80px;">Committee</th>
+          <th style="width:60px;">Score</th>
+          <th>Votes (B·M·G·W·A)</th>
+          <th style="width:90px;">Statement</th>
+        </tr>
+      </thead>
+      <tbody id="screenerTableBody">
+        <tr><td colspan="6" style="padding:24px 12px;color:var(--rule-mid);font-style:italic;font-size:11px;">
+          Press "Run Dow 30 Screener" to begin. The committee will evaluate all 30 Dow stocks one at a time — enriching each with live data, voting blind, deliberating, and issuing an Opus statement. Results rank live as they complete.
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- ════════ END DOW 30 SCREENER TAB ════════ -->
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab + '-btn').classList.add('active');
+}
+</script>
+
+<script>
+
+const SERVER = 'http://localhost:8765';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let state = {
+  ticker:       '',
+  brief:        '',
+  blindVerdicts: [],
+  deliberationVerdicts: [],
+  vote:         null,
+  sessionCost:  0,
+};
+
+const INVESTOR_KEYS = {
+  'Warren Buffett':        'buffett',
+  'Leopold Aschenbrenner': 'aschenbrenner',
+  'Howard Marks':          'marks',
+  'Joel Greenblatt':       'greenblatt',
+  'Cathie Wood':           'wood',
+};
+
+// ── Server health ──────────────────────────────────────────────────────────
+async function checkServer() {
+  const dot = document.getElementById('statusDot');
+  const lbl = document.getElementById('statusLabel');
+  try {
+    await fetch(SERVER + '/v1/messages', { method: 'OPTIONS', signal: AbortSignal.timeout(2000) });
+    dot.className = 'status-dot online'; lbl.textContent = 'Server online'; return true;
+  } catch {
+    dot.className = 'status-dot offline'; lbl.textContent = 'Server offline'; return false;
+  }
+}
+checkServer();
+setInterval(checkServer, 8000);
+
+// Aschenbrenner starts unchecked — grey his column on load
+window.addEventListener('DOMContentLoaded', () => {
+  toggleAschenbrenner();
+});
+
+// ── Cost tracking ──────────────────────────────────────────────────────────
+function addCost(inputTokens, outputTokens, model, elementId) {
+  const rates = {
+    haiku:  { in: 0.000001, out: 0.000005 },
+    sonnet: { in: 0.000003, out: 0.000015 },
+    opus:   { in: 0.000005, out: 0.000025 },
+  };
+  const r = rates[model] || rates.sonnet;
+  const cost = inputTokens * r.in + outputTokens * r.out;
+  state.sessionCost += cost;
+  if (elementId) document.getElementById(elementId).textContent = `$${cost.toFixed(4)}`;
+  document.getElementById('sessionCost').textContent = `$${state.sessionCost.toFixed(4)}`;
+  return cost;
+}
+
+// ── Enrich ─────────────────────────────────────────────────────────────────
+async function enrich() {
+  const ticker = document.getElementById('tickerInput').value.trim();
+  if (!ticker) return;
+  const btn    = document.getElementById('enrichBtn');
+  const status = document.getElementById('enrichStatus');
+  const area   = document.getElementById('brief');
+
+  if (!(await checkServer())) {
+    status.textContent = '✗ Server offline';
+    status.style.color = 'var(--short)';
+    return;
+  }
+
+  btn.textContent = 'Searching...'; btn.disabled = true;
+  status.textContent = 'Pulling live market data...'; status.style.color = 'var(--ink-dim)';
+
+  try {
+    const resp = await fetch(SERVER + '/enrich', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker })
+    });
+    const data = await resp.json();
+    if (resp.ok && data.brief) {
+      area.value = data.brief;
+      state.ticker = ticker;
+      state.brief  = data.brief;
+      // estimate enrichment cost (~500 input, ~600 output for Haiku)
+      addCost(500, 600, 'haiku', 'enrichCost');
+      status.textContent = `✓ Brief ready for ${ticker}`;
+      status.style.color = 'var(--buy)';
+    } else {
+      status.textContent = `✗ ${data.error || 'Enrichment failed'}`;
+      status.style.color = 'var(--short)';
+    }
+  } catch (e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = 'var(--short)';
+  } finally {
+    btn.textContent = 'Enrich →'; btn.disabled = false;
+  }
+}
+
+// ── Reset investor column ──────────────────────────────────────────────────
+function resetColumn(key) {
+  document.getElementById(`badge-${key}`).className = 'verdict-badge pending';
+  document.getElementById(`badge-${key}`).textContent = 'awaiting';
+  document.getElementById(`bar-${key}`).style.width = '0%';
+  document.getElementById(`conv-${key}`).textContent = '—';
+  document.getElementById(`text-${key}`).className = 'verdict-text empty-state';
+  document.getElementById(`delib-${key}`).style.display = 'none';
+  document.getElementById(`delib-${key}`).innerHTML = '';
+}
+
+function setPending(key) {
+  document.getElementById(`badge-${key}`).textContent = '';
+  document.getElementById(`badge-${key}`).innerHTML =
+    '<span class="loading-dots"><span></span><span></span><span></span></span>';
+}
+
+function renderVerdict(investorName, verdict, phase) {
+  const key  = INVESTOR_KEYS[investorName];
+  if (!key) return;
+
+  const pos  = verdict.position || 'PASS';
+  const conv = verdict.conviction || 0;
+
+  // Badge
+  const badge = document.getElementById(`badge-${key}`);
+  badge.className = `verdict-badge ${pos}`;
+  badge.textContent = pos;
+
+  // Conviction bar
+  setTimeout(() => {
+    document.getElementById(`bar-${key}`).style.width = (conv / 10 * 100) + '%';
+  }, 100);
+  document.getElementById(`conv-${key}`).textContent = conv + '/10';
+
+  // Thesis text
+  const raw = verdict.raw || verdict.response || '';
+  let thesis = raw;
+  const thesisMatch = raw.match(/THESIS:\s*([\s\S]+)/i);
+  if (thesisMatch) thesis = thesisMatch[1].trim();
+  // For deliberation, use the response field
+  if (verdict.response && phase === 'deliberation') thesis = verdict.response;
+
+  const textEl = document.getElementById(`text-${key}`);
+  textEl.className = 'verdict-text';
+  textEl.textContent = thesis;
+
+  // Deliberation response
+  if (phase === 'deliberation' && verdict.response) {
+    const delibEl = document.getElementById(`delib-${key}`);
+    delibEl.style.display = 'block';
+
+    const prevConv = verdict.prev_conviction || conv;
+    const delta    = conv - prevConv;
+    let deltaStr   = '';
+    if (delta > 0) deltaStr = `<span class="conviction-delta delta-up">↑ ${prevConv}→${conv}</span>`;
+    else if (delta < 0) deltaStr = `<span class="conviction-delta delta-down">↓ ${prevConv}→${conv}</span>`;
+    else deltaStr = `<span class="conviction-delta delta-same">=${conv}</span>`;
+
+    delibEl.innerHTML = `
+      <div class="deliberation-label">deliberation ${deltaStr}</div>
+      <div>${verdict.response}</div>
+    `;
+  }
+}
+
+// ── Render committee score ─────────────────────────────────────────────────
+function renderCommitteeScore(vote, phase) {
+  const pos   = vote.position || 'PASS';
+  const score = vote.score    || 0;
+
+  const posEl = document.getElementById('committeePosition');
+  posEl.className = `committee-position-badge ${pos}`;
+  posEl.textContent = pos;
+
+  document.getElementById('committeePhase').textContent = phase;
+
+  // Score bar — centered at 50%, fills left (short) or right (buy)
+  const pct  = Math.abs(score) * 50; // 0–50%
+  const fill = document.getElementById('scoreBar');
+  if (score >= 0) {
+    fill.className = 'committee-score-fill positive';
+    setTimeout(() => { fill.style.left = '50%'; fill.style.width = pct + '%'; }, 100);
+  } else {
+    fill.className = 'committee-score-fill negative';
+    setTimeout(() => { fill.style.left = (50 - pct) + '%'; fill.style.width = pct + '%'; }, 100);
+  }
+  document.getElementById('scoreNum').textContent = score > 0 ? `+${score}` : `${score}`;
+}
+
+// ── Phase dot management ───────────────────────────────────────────────────
+function setPhase(n) {
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById(`phase${i}dot`);
+    if (i < n) dot.className = 'phase-dot done';
+    else if (i === n) dot.className = 'phase-dot active';
+    else dot.className = 'phase-dot';
+  }
+}
+
+// ── Blind evaluation ───────────────────────────────────────────────────────
+async function runBlind() {
+  const brief  = document.getElementById('brief').value.trim();
+  const ticker = document.getElementById('tickerInput').value.trim() || 'Unnamed';
+
+  if (!brief) {
+    document.getElementById('enrichStatus').textContent = '✗ Enter a brief first';
+    document.getElementById('enrichStatus').style.color = 'var(--short)';
+    return;
+  }
+  if (!(await checkServer())) return;
+
+  state.ticker = ticker;
+  state.brief  = brief;
+  state.blindVerdicts = [];
+  state.deliberationVerdicts = [];
+  state.vote   = null;
+
+  // Reset UI
+  Object.values(INVESTOR_KEYS).forEach(k => resetColumn(k));
+  Object.values(INVESTOR_KEYS).forEach(k => setPending(k));
+  document.getElementById('synthesisText').textContent = 'Awaiting deliberation and Opus synthesis...';
+  document.getElementById('committeePosition').className = 'committee-position-badge TBD';
+  document.getElementById('committeePosition').textContent = '—';
+  document.getElementById('committeePhase').textContent = 'evaluating...';
+  document.getElementById('scoreBar').style.width = '0%';
+  document.getElementById('scoreNum').textContent = '—';
+  document.getElementById('logBtn').disabled = true;
+
+  setPhase(1);
+
+  const btn = document.getElementById('runBlindBtn');
+  btn.disabled = true; btn.textContent = 'Committee in session...';
+  document.getElementById('runDeliberateBtn').disabled = true;
+  document.getElementById('runSynthesizeBtn').disabled = true;
+
+  try {
+    const includeAschenbrenner = document.getElementById('includeAschenbrenner').checked;
+
+    const resp = await fetch(SERVER + '/committee/blind', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief, ticker, exclude: includeAschenbrenner ? [] : ['Leopold Aschenbrenner'] })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    state.blindVerdicts = data.verdicts || [];
+    state.vote          = data.vote;
+
+    // Render each investor
+    state.blindVerdicts.forEach(v => renderVerdict(v.investor, v, 'blind'));
+
+    // Estimate cost: ~30k input tokens * 5 agents, ~200 output each
+    addCost(150000, 1000, 'sonnet', 'blindCost');
+
+    renderCommitteeScore(state.vote, 'after blind votes');
+    setPhase(2);
+
+    document.getElementById('runDeliberateBtn').disabled = false;
+    document.getElementById('logBtn').disabled = false;
+
+    // Handle any errors
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      Object.entries(data.errors).forEach(([name, err]) => {
+        const key = INVESTOR_KEYS[name];
+        if (key) {
+          document.getElementById(`badge-${key}`).className = 'verdict-badge';
+          document.getElementById(`badge-${key}`).textContent = 'ERR';
+          document.getElementById(`text-${key}`).textContent = err;
+        }
+      });
+    }
+
+  } catch (e) {
+    document.getElementById('committeePhase').textContent = `Error: ${e.message}`;
+    Object.values(INVESTOR_KEYS).forEach(k => {
+      document.getElementById(`badge-${k}`).textContent = '—';
+    });
+  } finally {
+    btn.disabled = false; btn.textContent = 'Convene Committee →';
+  }
+}
+
+// ── Deliberation ───────────────────────────────────────────────────────────
+async function runDeliberate() {
+  if (!state.blindVerdicts.length) return;
+  if (!(await checkServer())) return;
+
+  const btn = document.getElementById('runDeliberateBtn');
+  btn.disabled = true; btn.textContent = 'Deliberating...';
+  document.getElementById('runSynthesizeBtn').disabled = true;
+
+  // Show pending on all
+  Object.values(INVESTOR_KEYS).forEach(k => {
+    document.getElementById(`delib-${k}`).style.display = 'block';
+    document.getElementById(`delib-${k}`).innerHTML =
+      '<div class="deliberation-label">deliberating <span class="loading-dots"><span></span><span></span><span></span></span></div>';
+  });
+
+  try {
+    const includeAschenbrenner2 = document.getElementById('includeAschenbrenner').checked;
+
+    const resp = await fetch(SERVER + '/committee/deliberate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief: state.brief, verdicts: state.blindVerdicts, ticker: state.ticker, exclude: includeAschenbrenner2 ? [] : ['Leopold Aschenbrenner'] })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    state.deliberationVerdicts = data.deliberation || [];
+    state.vote                 = data.vote;
+
+    state.deliberationVerdicts.forEach(v => renderVerdict(v.investor, v, 'deliberation'));
+
+    addCost(180000, 1200, 'sonnet', 'deliberateCost');
+
+    renderCommitteeScore(state.vote, 'after deliberation');
+    setPhase(3);
+
+    document.getElementById('runSynthesizeBtn').disabled = false;
+    document.getElementById('logBtn').disabled = false;
+
+  } catch (e) {
+    document.getElementById('committeePhase').textContent = `Deliberation error: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Begin Deliberation →';
+  }
+}
+
+// ── Opus synthesis ─────────────────────────────────────────────────────────
+async function runSynthesize() {
+  if (!state.deliberationVerdicts.length && !state.blindVerdicts.length) return;
+  if (!(await checkServer())) return;
+
+  const btn = document.getElementById('runSynthesizeBtn');
+  btn.disabled = true; btn.textContent = 'Opus writing...';
+
+  document.getElementById('synthesisText').innerHTML =
+    '<span class="loading-dots"><span></span><span></span><span></span></span> Opus is drafting the committee statement...';
+
+  try {
+    const resp = await fetch(SERVER + '/committee/synthesize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        blind_verdicts:        state.blindVerdicts,
+        deliberation_verdicts: state.deliberationVerdicts,
+        vote:                  state.vote,
+        brief:                 state.brief,
+        ticker:                state.ticker
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    document.getElementById('synthesisText').className = 'synthesis-text';
+    document.getElementById('synthesisText').textContent = data.statement || 'No statement generated.';
+
+    if (data.tokens) {
+      addCost(data.tokens.input, data.tokens.output, 'opus', 'synthesisCost');
+    }
+
+    setPhase(4);
+    document.getElementById('logBtn').disabled = false;
+
+  } catch (e) {
+    document.getElementById('synthesisText').textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Draft Statement (Opus)';
+  }
+}
+
+// ── Log decision ───────────────────────────────────────────────────────────
+function logDecision() {
+  const timestamp = new Date().toISOString();
+  const record = {
+    timestamp,
+    ticker:     state.ticker,
+    position:   state.vote?.position,
+    score:      state.vote?.score,
+    blind:      state.blindVerdicts,
+    deliberation: state.deliberationVerdicts,
+    statement:  document.getElementById('synthesisText').textContent,
+    brief:      state.brief.substring(0, 500),
+  };
+
+  const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `furton_${state.ticker}_${timestamp.split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  document.getElementById('committeePhase').textContent = 'decision logged ✓';
+  setPhase(4);
+}
+
+// ── Aschenbrenner toggle ───────────────────────────────────────────────────
+function toggleAschenbrenner() {
+  const include = document.getElementById('includeAschenbrenner').checked;
+  const col     = document.getElementById('col-aschenbrenner');
+  const toggle  = document.getElementById('aschToggle');
+  if (include) {
+    col.classList.remove('excluded');
+    toggle.classList.add('active');
+    document.getElementById('text-aschenbrenner').textContent = 'Structural AI Bottlenecks';
+    document.getElementById('text-aschenbrenner').className = 'verdict-text empty-state';
+  } else {
+    col.classList.add('excluded');
+    toggle.classList.remove('active');
+    resetColumn('aschenbrenner');
+    document.getElementById('text-aschenbrenner').textContent = 'Not included in this evaluation';
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// DOW 30 SCREENER
+// ════════════════════════════════════════════════════════════════════════════
+
+const screener = {
+  stocks:    [],      // loaded from server
+  results:   {},      // ticker -> result
+  queue:     [],      // remaining tickers
+  current:   null,
+  running:   false,
+  paused:    false,
+  stopped:   false,
+  cost:      0,
+  completed: 0,
+  mode:      'realtime',
+};
+
+const INV_ABBR = {
+  'Warren Buffett': 'B', 'Howard Marks': 'M', 'Joel Greenblatt': 'G',
+  'Cathie Wood': 'W', 'Leopold Aschenbrenner': 'A'
+};
+const INV_COLOR = {
+  'Warren Buffett': 'var(--buffett)', 'Howard Marks': 'var(--marks)',
+  'Joel Greenblatt': 'var(--greenblatt)', 'Cathie Wood': 'var(--wood)',
+  'Leopold Aschenbrenner': 'var(--aschenbrenner)'
+};
+
+async function loadDow30() {
+  try {
+    const resp = await fetch(SERVER + '/screener/dow30list');
+    const data = await resp.json();
+    screener.stocks = data.stocks;
+    return true;
+  } catch (e) {
+    document.getElementById('screenerProgressLabel').textContent = 'Could not load Dow 30 list — is the server running?';
+    return false;
+  }
+}
+
+function getScreenerMode() {
+  const r = document.querySelector('input[name="screenerMode"]:checked');
+  return r ? r.value : 'realtime';
+}
+
+function updateModeHint() {
+  const mode = getScreenerMode();
+  const label = document.getElementById('screenerProgressLabel');
+  if (mode === 'batch') {
+    label.textContent = 'Batch mode — blind votes submitted as one job at 50% cost. Most batches finish in under an hour (can take up to 24h). Keep this tab open.';
+  } else {
+    label.textContent = 'Real-time mode — full cost, immediate results. Two-stage filter: blind on all 30, deliberation only on high-signal stocks.';
+  }
+}
+
+async function startScreener() {
+  if (screener.running) return;
+  if (!(await checkServer())) {
+    document.getElementById('screenerProgressLabel').textContent = '✗ Server offline — start furton_server.py first.';
+    return;
+  }
+  if (!screener.stocks.length) {
+    const ok = await loadDow30();
+    if (!ok) return;
+  }
+
+  // Reset state
+  screener.results = {};
+  screener.queue = [...screener.stocks];
+  screener.running = true;
+  screener.paused = false;
+  screener.stopped = false;
+  screener.cost = 0;
+  screener.completed = 0;
+  screener.mode = getScreenerMode();
+
+  document.getElementById('screenerRunBtn').disabled = true;
+  document.getElementById('screenerStopBtn').disabled = false;
+  document.getElementById('screenerExportBtn').disabled = true;
+
+  renderScreenerTable();
+
+  if (screener.mode === 'batch') {
+    document.getElementById('screenerPauseBtn').disabled = true; // no pause in batch
+    runBatchScreener();
+  } else {
+    document.getElementById('screenerPauseBtn').disabled = false;
+    processNextStock();
+  }
+}
+
+async function processNextStock() {
+  if (screener.stopped) { finishScreener('Stopped'); return; }
+  if (screener.paused)  { return; }  // will resume on unpause
+  if (screener.queue.length === 0) { finishScreener('Complete'); return; }
+
+  const stock = screener.queue.shift();
+  screener.current = stock.ticker;
+
+  document.getElementById('screenerProgressLabel').textContent =
+    `Evaluating ${stock.ticker} (${stock.name})${stock.ai_relevant ? ' — Aschenbrenner included' : ''}... ${screener.completed}/30 done`;
+  renderScreenerTable();
+
+  try {
+    const resp = await fetch(SERVER + '/screener/stock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticker: stock.ticker, name: stock.name,
+        ai_relevant: stock.ai_relevant, deliberate: true, synthesize: true
+      })
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      screener.results[stock.ticker] = { ...stock, error: data.error };
+    } else {
+      screener.results[stock.ticker] = { ...stock, ...data };
+      // Two-stage cost: blind always (~$0.13); deliberation+Opus only if advanced (~$0.14 more)
+      const stockCost = data.deliberation_skipped ? 0.13 : 0.27;
+      screener.cost += stockCost;
+      document.getElementById('screenerCost').textContent = `$${screener.cost.toFixed(4)}`;
+    }
+  } catch (e) {
+    screener.results[stock.ticker] = { ...stock, error: e.message };
+  }
+
+  screener.completed++;
+  const pct = (screener.completed / screener.stocks.length) * 100;
+  document.getElementById('screenerProgressFill').style.width = pct + '%';
+  renderScreenerTable();
+
+  // Brief pause between stocks to stay clear of rate limits
+  setTimeout(processNextStock, 1200);
+}
+
+function renderScreenerTable() {
+  const tbody = document.getElementById('screenerTableBody');
+
+  // Build a combined list: completed results (sorted by score) + pending
+  const completed = Object.values(screener.results).filter(r => !r.error && r.vote);
+  const errored   = Object.values(screener.results).filter(r => r.error);
+  completed.sort((a, b) => (b.vote?.score ?? -99) - (a.vote?.score ?? -99));
+
+  const doneTickers = new Set([...completed, ...errored].map(r => r.ticker));
+  const pending = screener.stocks.filter(s => !doneTickers.has(s.ticker));
+
+  let html = '';
+  let rank = 1;
+
+  // Completed rows (ranked)
+  for (const r of completed) {
+    const pos   = r.vote.position;
+    const score = r.vote.score > 0 ? `+${r.vote.score}` : `${r.vote.score}`;
+    const isProcessing = r.ticker === screener.current;
+
+    // Vote dots
+    const verdicts = r.deliberation && r.deliberation.length ? r.deliberation : r.blind;
+    let votesHtml = '';
+    for (const inv of ['Warren Buffett','Howard Marks','Joel Greenblatt','Cathie Wood','Leopold Aschenbrenner']) {
+      const v = verdicts?.find(x => x.investor === inv);
+      if (!v) { votesHtml += '<div class="sr-vote-dot" style="background:var(--rule-mid);opacity:0.3;"></div>'; continue; }
+      const c = v.position === 'BUY' ? 'var(--buy)' : v.position === 'SHORT' ? 'var(--short)' : v.position === 'ABSTAIN' ? 'var(--abstain)' : 'var(--pass)';
+      const letter = v.position === 'BUY' ? '↑' : v.position === 'SHORT' ? '↓' : v.position === 'ABSTAIN' ? '–' : '=';
+      votesHtml += `<div class="sr-vote-dot" style="background:${c};" title="${inv}: ${v.position} (${v.conviction})">${letter}</div>`;
+    }
+
+    html += `
+      <tr class="${isProcessing ? 'processing' : ''}">
+        <td class="sr-rank">${rank}</td>
+        <td>
+          <div class="sr-ticker">${r.ticker}${r.ai_relevant ? '<span class="ai-badge">AI</span>' : ''}</div>
+          <div class="sr-name">${r.name}</div>
+        </td>
+        <td><span class="sr-position ${pos}">${pos}</span></td>
+        <td class="sr-score">${score}</td>
+        <td><div class="sr-votes">${votesHtml}</div></td>
+        <td>
+          <button class="sr-expand-btn" onclick="toggleStatement('${r.ticker}')">View</button>
+          ${r.deliberation_skipped ? '<span class="sr-skipped-tag" title="Deliberation skipped — all-around low conviction">no delib</span>' : ''}
+        </td>
+      </tr>
+      <tr class="sr-statement-row" id="stmt-${r.ticker}" style="display:none;">
+        <td colspan="6">
+          <div class="sr-statement-label">${r.deliberation_skipped ? 'Deliberation skipped' : 'Official committee statement'} — ${r.ticker}</div>
+          <div class="sr-statement-text${r.deliberation_skipped ? ' skipped' : ''}">${r.statement || 'No statement generated.'}</div>
+        </td>
+      </tr>`;
+    rank++;
+  }
+
+  // Currently processing (if not yet in results)
+  if (screener.current && !screener.results[screener.current]) {
+    const s = screener.stocks.find(x => x.ticker === screener.current);
+    if (s) {
+      html += `
+        <tr class="processing">
+          <td class="sr-rank">·</td>
+          <td><div class="sr-ticker">${s.ticker}</div><div class="sr-name">${s.name}</div></td>
+          <td colspan="4"><span class="sr-pending">Committee in session<span class="loading-dots"><span></span><span></span><span></span></span></span></td>
+        </tr>`;
+    }
+  }
+
+  // Pending rows
+  for (const s of pending) {
+    if (s.ticker === screener.current) continue;
+    html += `
+      <tr>
+        <td class="sr-rank" style="color:var(--rule-mid);">·</td>
+        <td><div class="sr-ticker" style="color:var(--ink-dim);">${s.ticker}</div><div class="sr-name">${s.name}</div></td>
+        <td colspan="4"><span class="sr-pending">Queued</span></td>
+      </tr>`;
+  }
+
+  // Errored rows
+  for (const r of errored) {
+    html += `
+      <tr>
+        <td class="sr-rank" style="color:var(--short);">!</td>
+        <td><div class="sr-ticker">${r.ticker}</div><div class="sr-name">${r.name}</div></td>
+        <td colspan="4"><span style="color:var(--short);font-size:10px;">${r.error}</span></td>
+      </tr>`;
+  }
+
+  tbody.innerHTML = html || '<tr><td colspan="6" style="padding:24px;color:var(--rule-mid);">No results yet.</td></tr>';
+}
+
+function toggleStatement(ticker) {
+  const row = document.getElementById('stmt-' + ticker);
+  if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function pauseScreener() {
+  if (!screener.running) return;
+  screener.paused = !screener.paused;
+  document.getElementById('screenerPauseBtn').textContent = screener.paused ? 'Resume' : 'Pause';
+  if (!screener.paused) {
+    document.getElementById('screenerProgressLabel').textContent = 'Resuming...';
+    processNextStock();
+  } else {
+    document.getElementById('screenerProgressLabel').textContent = `Paused at ${screener.completed}/30. Click Resume to continue.`;
+  }
+}
+
+function stopScreener() {
+  screener.stopped = true;
+  screener.paused = false;
+}
+
+function finishScreener(reason) {
+  screener.running = false;
+  screener.current = null;
+  document.getElementById('screenerRunBtn').disabled = false;
+  document.getElementById('screenerPauseBtn').disabled = true;
+  document.getElementById('screenerStopBtn').disabled = true;
+  document.getElementById('screenerExportBtn').disabled = Object.keys(screener.results).length === 0;
+  document.getElementById('screenerPauseBtn').textContent = 'Pause';
+  const done = Object.values(screener.results).filter(r => !r.error).length;
+  document.getElementById('screenerProgressLabel').textContent =
+    `${reason} — ${done} stocks evaluated · $${screener.cost.toFixed(2)} spent`;
+  renderScreenerTable();
+  renderPortfolio();
+}
+
+function exportScreener() {
+  const completed = Object.values(screener.results).filter(r => !r.error && r.vote);
+  completed.sort((a, b) => (b.vote?.score ?? -99) - (a.vote?.score ?? -99));
+  const record = {
+    timestamp: new Date().toISOString(),
+    screener: 'Dow 30',
+    stocks_evaluated: completed.length,
+    total_cost_estimate: screener.cost,
+    suggested_portfolio: computePortfolio().map(p => ({
+      ticker: p.ticker, name: p.name,
+      weight_pct: +(p.weight * 100).toFixed(2),
+      committee_score: p.score,
+    })),
+    rankings: completed.map((r, i) => ({
+      rank: i + 1, ticker: r.ticker, name: r.name,
+      committee_position: r.vote.position, score: r.vote.score,
+      ai_relevant: r.ai_relevant,
+      deliberation_skipped: r.deliberation_skipped || false,
+      votes: (r.deliberation?.length ? r.deliberation : r.blind)?.map(v => ({
+        investor: v.investor, position: v.position, conviction: v.conviction
+      })),
+      statement: r.statement,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `furton_dow30_screener_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+
+// ── Suggested portfolio (conviction-weighted pie) ──────────────────────────
+const PIE_COLORS = [
+  '#5A7A2E','#2E6B3E','#1A5C8B','#5A2E8B','#8B6A1A','#2D6A2D',
+  '#6B4A2E','#3E5A8B','#7A2E5A','#2E7A6B','#8B4A1A','#4A6B2E',
+  '#5A3E8B','#2E8B6A','#8B2E4A','#6A7A2E'
+];
+
+function parseCapital() {
+  const raw = (document.getElementById('portfolioCapital').value || '0').replace(/[^0-9.]/g,'');
+  return parseFloat(raw) || 0;
+}
+
+const CONCENTRATION_CAP = 0.25;   // no single name may exceed 25% of the portfolio
+
+// Clip any weight above `cap` and redistribute the excess across the uncapped
+// names pro-rata, iterating because a redistribution can push another name over.
+// If the cap is infeasible (fewer than 1/cap names), falls back to equal weights.
+function applyConcentrationCap(weights, cap) {
+  const n = weights.length;
+  if (n === 0) return weights;
+  if (cap * n < 1 - 1e-9) return weights.map(() => 1 / n);   // can't satisfy cap -> equal weight
+
+  let w = weights.slice();
+  for (let iter = 0; iter < 100; iter++) {
+    const over = [];
+    for (let i = 0; i < n; i++) if (w[i] > cap + 1e-12) over.push(i);
+    if (over.length === 0) break;
+
+    const overSet = new Set(over);
+    let excess = 0;
+    for (const i of over) { excess += w[i] - cap; w[i] = cap; }
+
+    const freeIdx = [];
+    for (let i = 0; i < n; i++) if (!overSet.has(i)) freeIdx.push(i);
+    const freeSum = freeIdx.reduce((s, i) => s + w[i], 0);
+    if (freeSum <= 1e-12) { for (const i of freeIdx) w[i] += excess / freeIdx.length; }
+    else { for (const i of freeIdx) w[i] += excess * (w[i] / freeSum); }
+  }
+  return w;
+}
+
+function computePortfolio() {
+  // Long-only: include only committee BUY-rated stocks, weight by score.
+  const buys = Object.values(screener.results)
+    .filter(r => !r.error && r.vote && r.vote.position === 'BUY' && r.vote.score > 0)
+    .sort((a,b) => b.vote.score - a.vote.score);
+
+  const totalScore = buys.reduce((s,r) => s + r.vote.score, 0);
+  // Raw conviction-normalized weights, then enforce the per-position cap.
+  const rawWeights = buys.map(r => totalScore > 0 ? r.vote.score / totalScore : (buys.length ? 1 / buys.length : 0));
+  const cappedWeights = applyConcentrationCap(rawWeights, CONCENTRATION_CAP);
+
+  return buys.map((r,i) => ({
+    ticker: r.ticker, name: r.name,
+    score: r.vote.score,
+    weight: cappedWeights[i],
+    capped: rawWeights[i] > CONCENTRATION_CAP + 1e-9,
+    color: PIE_COLORS[i % PIE_COLORS.length],
+  }));
+}
+
+function renderPortfolio() {
+  const panel = document.getElementById('portfolioPanel');
+  const positions = computePortfolio();
+
+  if (positions.length === 0) {
+    panel.style.display = 'block';
+    document.getElementById('portfolioPie').innerHTML =
+      '<text x="100" y="100" text-anchor="middle" fill="#444" font-size="9" font-family="monospace">No BUYs</text>';
+    document.getElementById('portfolioLegend').innerHTML =
+      '<div class="pf-empty">The committee did not issue any BUY ratings, so no long positions are suggested.</div>';
+    return;
+  }
+
+  panel.style.display = 'block';
+  const capital = parseCapital();
+
+  // Build SVG pie
+  const cx = 100, cy = 100, r = 88;
+  let angle = -90; // start at top
+  let paths = '';
+  for (const p of positions) {
+    const sweep = p.weight * 360;
+    const a0 = angle * Math.PI / 180;
+    const a1 = (angle + sweep) * Math.PI / 180;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const large = sweep > 180 ? 1 : 0;
+    if (positions.length === 1) {
+      // full circle
+      paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${p.color}" />`;
+    } else {
+      paths += `<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${p.color}" stroke="#0C0C0A" stroke-width="1"/>`;
+    }
+    // label if slice big enough
+    if (p.weight > 0.06) {
+      const mid = (angle + sweep/2) * Math.PI / 180;
+      const lx = cx + (r*0.6) * Math.cos(mid), ly = cy + (r*0.6) * Math.sin(mid);
+      paths += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="#0C0C0A" font-size="9" font-weight="700" font-family="monospace">${p.ticker}</text>`;
+    }
+    angle += sweep;
+  }
+  document.getElementById('portfolioPie').innerHTML = paths;
+
+  // Legend + allocation table
+  let legend = '';
+  for (const p of positions) {
+    const dollars = capital * p.weight;
+    const capTag = p.capped ? ' <span style="font-size:8px;color:var(--abstain);letter-spacing:0.04em;">capped</span>' : '';
+    legend += `
+      <div class="pf-row">
+        <div class="pf-swatch" style="background:${p.color}"></div>
+        <div class="pf-ticker">${p.ticker}</div>
+        <div class="pf-name">${p.name}${capTag}</div>
+        <div class="pf-weight">${(p.weight*100).toFixed(1)}%</div>
+        <div class="pf-dollars">$${dollars.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+      </div>`;
+  }
+  legend += `
+    <div class="pf-total">
+      <div class="pf-swatch" style="background:transparent"></div>
+      <div class="pf-ticker">Total</div>
+      <div class="pf-name">${positions.length} long position${positions.length>1?'s':''}</div>
+      <div class="pf-weight">100%</div>
+      <div class="pf-dollars">$${capital.toLocaleString(undefined,{maximumFractionDigits:0})}</div>
+    </div>`;
+  document.getElementById('portfolioLegend').innerHTML = legend;
+}
+
+
+// ── Batch mode orchestration ───────────────────────────────────────────────
+async function runBatchScreener() {
+  const label = document.getElementById('screenerProgressLabel');
+
+  // Phase 1: enrich all stocks (real-time Haiku — cheap, fast)
+  label.textContent = 'Batch phase 1/5 — enriching 30 stocks with live data...';
+  const enriched = [];
+  for (let i = 0; i < screener.stocks.length; i++) {
+    if (screener.stopped) { finishScreener('Stopped'); return; }
+    const stock = screener.stocks[i];
+    screener.current = stock.ticker;
+    label.textContent = `Batch phase 1/5 — enriching ${stock.ticker} (${i+1}/30)...`;
+    renderScreenerTable();
+    try {
+      const resp = await fetch(SERVER + '/enrich', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ticker: `${stock.name} (${stock.ticker})` })
+      });
+      const data = await resp.json();
+      enriched.push({ ...stock, brief: data.brief || '' });
+      screener.cost += 0.015;
+    } catch (e) {
+      enriched.push({ ...stock, brief: '', enrichError: e.message });
+    }
+    document.getElementById('screenerCost').textContent = `$${screener.cost.toFixed(4)}`;
+    document.getElementById('screenerProgressFill').style.width = ((i+1)/30 * 20) + '%';
+  }
+  screener.current = null;
+
+  // Phase 2: submit blind batch
+  label.textContent = 'Batch phase 2/5 — submitting blind votes as one batch job...';
+  let blindBatch;
+  try {
+    const resp = await fetch(SERVER + '/screener/batch/submit_blind', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ stocks: enriched })
+    });
+    blindBatch = await resp.json();
+    if (blindBatch.error) throw new Error(blindBatch.error);
+  } catch (e) {
+    label.textContent = `Batch submit failed: ${e.message}`;
+    finishScreener('Failed'); return;
+  }
+
+  // Phase 3: poll blind batch
+  const blindUrl = await pollBatch(blindBatch.batch_id, 'blind votes', 20, 50);
+  if (!blindUrl) { finishScreener('Stopped'); return; }
+
+  // Retrieve + compute votes + advancers
+  label.textContent = 'Batch phase 3/5 — retrieving blind results...';
+  let blindResults;
+  try {
+    const resp = await fetch(SERVER + '/screener/batch/retrieve_blind', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ results_url: blindUrl, stocks: enriched })
+    });
+    blindResults = await resp.json();
+  } catch (e) {
+    label.textContent = `Retrieve failed: ${e.message}`; finishScreener('Failed'); return;
+  }
+
+  // Merge blind results into screener.results
+  for (const stock of enriched) {
+    const r = blindResults.results[stock.ticker];
+    if (r) {
+      screener.results[stock.ticker] = {
+        ...stock, blind: r.blind, vote: r.vote,
+        advanced: r.advances, advanceReason: r.reason,
+        deliberation: [], deliberation_skipped: !r.advances,
+        statement: r.advances ? '' :
+          `Deliberation round skipped due to all-around low conviction. The committee's blind vote was ${r.vote.position} (weighted score ${r.vote.score >= 0 ? '+' : ''}${r.vote.score}) with no individual conviction at or above 8/10 and no directional disagreement between members. No deliberation or committee statement was generated for this stock to conserve cost.`
+      };
+    }
+  }
+  // Blind batch cost (50% off): ~150 calls
+  screener.cost += 1.2;
+  document.getElementById('screenerCost').textContent = `$${screener.cost.toFixed(4)}`;
+  document.getElementById('screenerProgressFill').style.width = '55%';
+  renderScreenerTable();
+
+  const advancing = blindResults.advancing || [];
+  if (advancing.length === 0) {
+    label.textContent = 'No stocks advanced to deliberation — all low conviction.';
+    finishScreener('Complete'); return;
+  }
+
+  // Phase 4: submit deliberation batch for advancers
+  label.textContent = `Batch phase 4/5 — ${advancing.length} stocks advanced. Submitting deliberation batch...`;
+  const advancers = advancing.map(t => ({
+    ticker: t,
+    ai_relevant: screener.results[t].ai_relevant,
+    brief: screener.results[t].brief,
+    blind_verdicts: screener.results[t].blind,
+  }));
+
+  let delibBatch;
+  try {
+    const resp = await fetch(SERVER + '/screener/batch/submit_deliberate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ advancers })
+    });
+    delibBatch = await resp.json();
+    if (delibBatch.error) throw new Error(delibBatch.error);
+  } catch (e) {
+    label.textContent = `Deliberation submit failed: ${e.message}`; finishScreener('Partial'); return;
+  }
+
+  if (delibBatch.batch_id) {
+    const delibUrl = await pollBatch(delibBatch.batch_id, 'deliberation', 70, 90);
+    if (!delibUrl) { finishScreener('Stopped'); return; }
+
+    label.textContent = 'Batch phase 5/5 — retrieving deliberation + writing statements...';
+    try {
+      const resp = await fetch(SERVER + '/screener/batch/retrieve_deliberate', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ results_url: delibUrl, advancers })
+      });
+      const delibResults = await resp.json();
+      for (const t of advancing) {
+        const r = delibResults.results[t];
+        if (r) {
+          screener.results[t].deliberation = r.deliberation;
+          screener.results[t].vote = r.vote;
+        }
+      }
+      screener.cost += 0.55; // deliberation batch (50% off)
+    } catch (e) {
+      label.textContent = `Deliberation retrieve failed: ${e.message}`;
+    }
+  }
+
+  // Phase 5: synthesize advancers real-time (Opus, few, cheap)
+  for (let i = 0; i < advancing.length; i++) {
+    if (screener.stopped) break;
+    const t = advancing[i];
+    label.textContent = `Batch phase 5/5 — committee statement ${i+1}/${advancing.length} (${t})...`;
+    try {
+      const r = screener.results[t];
+      const resp = await fetch(SERVER + '/committee/synthesize', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          blind_verdicts: r.blind, deliberation_verdicts: r.deliberation,
+          vote: r.vote, brief: r.brief, ticker: t
+        })
+      });
+      const data = await resp.json();
+      screener.results[t].statement = data.statement || '';
+      if (data.tokens) screener.cost += (data.tokens.input*0.000005 + data.tokens.output*0.000025);
+    } catch (e) { /* leave statement blank */ }
+    document.getElementById('screenerCost').textContent = `$${screener.cost.toFixed(4)}`;
+    document.getElementById('screenerProgressFill').style.width = (55 + (i+1)/advancing.length*45) + '%';
+    renderScreenerTable();
+  }
+
+  finishScreener('Complete');
+}
+
+// Poll a batch until ended. Returns results_url or null if stopped.
+async function pollBatch(batchId, label, startPct, endPct) {
+  const labelEl = document.getElementById('screenerProgressLabel');
+  let elapsed = 0;
+  while (true) {
+    if (screener.stopped) return null;
+    try {
+      const resp = await fetch(SERVER + '/screener/batch/poll', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ batch_id: batchId })
+      });
+      const data = await resp.json();
+      const counts = data.request_counts || {};
+      const done = (counts.succeeded||0) + (counts.errored||0) + (counts.canceled||0) + (counts.expired||0);
+      const total = done + (counts.processing||0);
+      labelEl.textContent = `Processing ${label} batch — ${done}/${total} done (${Math.floor(elapsed/60)}m${elapsed%60}s elapsed). Most finish under an hour.`;
+      if (data.ended) {
+        return data.results_url;
+      }
+    } catch (e) {
+      labelEl.textContent = `Poll error: ${e.message} — retrying...`;
+    }
+    await new Promise(r => setTimeout(r, 20000)); // poll every 20s
+    elapsed += 20;
+  }
+}
+
+
+// Preload the Dow 30 list when server comes online
+loadDow30();
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+function resetAll() {
+  state = { ticker: '', brief: '', blindVerdicts: [], deliberationVerdicts: [], vote: null, sessionCost: state.sessionCost };
+  document.getElementById('tickerInput').value = '';
+  document.getElementById('brief').value = '';
+  document.getElementById('enrichStatus').textContent = '';
+  Object.values(INVESTOR_KEYS).forEach(k => resetColumn(k));
+  document.getElementById('committeePosition').className = 'committee-position-badge TBD';
+  document.getElementById('committeePosition').textContent = '—';
+  document.getElementById('committeePhase').textContent = 'awaiting evaluation';
+  document.getElementById('scoreBar').style.width = '0%';
+  document.getElementById('scoreNum').textContent = '—';
+  document.getElementById('synthesisText').className = 'synthesis-pending';
+  document.getElementById('synthesisText').textContent = 'Awaiting deliberation and Opus synthesis...';
+  document.getElementById('runDeliberateBtn').disabled = true;
+  document.getElementById('runSynthesizeBtn').disabled = true;
+  document.getElementById('logBtn').disabled = true;
+  document.getElementById('enrichCost').textContent = '—';
+  document.getElementById('blindCost').textContent = '—';
+  document.getElementById('deliberateCost').textContent = '—';
+  document.getElementById('synthesisCost').textContent = '—';
+  setPhase(0);
+}
+</script>
+</body>
+</html>

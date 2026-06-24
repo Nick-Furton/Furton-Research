@@ -1,0 +1,5 @@
+# Furton Research — Python dependencies
+# Everything else the project uses (json, http.server, urllib, threading,
+# pathlib, etc.) is in the Python standard library.
+sentence-transformers
+numpy

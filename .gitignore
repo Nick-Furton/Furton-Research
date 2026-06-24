@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# WHITELIST repo. Ignore EVERYTHING by default, then re-include only the small
+# set of safe, publishable source files below. This guarantees that the API key,
+# the copyrighted primary-source libraries / manifests / embeddings, the
+# portfolio data, the website, and all local backups are NEVER committed — even
+# if new files appear in this directory later.
+# ─────────────────────────────────────────────────────────────────────────────
+*
+
+# Re-include only these:
+!/.gitignore
+!/README.md
+!/requirements.txt
+!/furton_server.py
+!/furton_embed.py
+!/furton_rechunk.py
+!/furton_committee.html
+!/furton_tradelog.html
+!/furton_performance.html

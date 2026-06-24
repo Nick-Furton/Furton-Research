@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furton Research — Trade Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #E8E2D0;
+    --ink-dim:    #7A7060;
+    --ink-mid:    #A09880;
+    --paper:      #0C0C0A;
+    --paper-card: #0F0F0C;
+    --rule:       #222218;
+    --rule-mid:   #333328;
+    --buy:        #2D6A2D;
+    --pass:       #6A6050;
+    --short:      #8B1A1A;
+    --gain:       #3E8B3E;
+    --loss:       #B5341A;
+    --amber:      #8B6A1A;
+    --mono:   'Courier Prime', monospace;
+    --serif:  'Playfair Display', serif;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 13px; line-height: 1.6; min-height: 100vh; }
+
+  .masthead { border-bottom: 1px solid var(--rule-mid); padding: 16px 28px; display: flex; align-items: center; gap: 20px; }
+  .masthead-title { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .masthead-sub { font-size: 10px; color: var(--ink-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+  .masthead-sep { color: var(--rule-mid); font-size: 20px; }
+
+  /* Summary band */
+  .summary-band {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    border-bottom: 1px solid var(--rule);
+  }
+  .summary-cell { padding: 16px 24px; border-right: 1px solid var(--rule); }
+  .summary-cell:last-child { border-right: none; }
+  .summary-label { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .summary-value { font-family: var(--serif); font-size: 22px; font-weight: 700; }
+  .summary-value.gain { color: var(--gain); }
+  .summary-value.loss { color: var(--loss); }
+  .summary-sub { font-size: 9px; color: var(--ink-dim); margin-top: 2px; }
+
+  /* Entry form */
+  .entry-section { padding: 20px 28px; border-bottom: 1px solid var(--rule); }
+  .section-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 14px; }
+  .entry-grid { display: grid; grid-template-columns: 0.7fr 0.62fr 0.78fr 0.95fr 0.95fr 0.95fr auto; gap: 10px; align-items: start; }
+  .ticker-name-hint { font-size: 9px; color: var(--buy); margin-top: 4px; min-height: 12px; letter-spacing: 0.04em; }
+  .field-unit { color: var(--ink-dim); font-size: 7px; letter-spacing: 0.06em; }
+  .field-help { font-size: 8px; color: var(--ink-dim); margin-top: 4px; letter-spacing: 0.03em; min-height: 10px; }
+  .field-price input, .field-amount input { border-color: var(--rule-mid); }
+  .field-price label, .field-amount label { color: var(--ink); }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); min-height: 22px; line-height: 1.3; display: flex; align-items: flex-end; }
+  .entry-grid .add-btn { align-self: start; margin-top: 27px; }
+  input, select {
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink);
+    font-family: var(--mono); font-size: 12px; padding: 8px 10px; outline: none; width: 100%;
+    transition: border-color 0.2s; box-sizing: border-box; height: 35px; line-height: 1.2;
+  }
+  select { appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-dim) 50%),
+                      linear-gradient(135deg, var(--ink-dim) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 26px; cursor: pointer; }
+  input:focus, select:focus { border-color: #555540; }
+  input::placeholder { color: #2A2A1A; }
+
+  .add-btn {
+    background: none; border: 1px solid var(--buy); color: var(--buy);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 9px 18px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .add-btn:hover { background: var(--buy); color: var(--paper); }
+
+  .import-row { margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .ghost-btn {
+    background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 8px 14px; cursor: pointer; transition: all 0.15s;
+  }
+  .ghost-btn:hover { border-color: var(--ink-dim); color: var(--ink); }
+  .import-hint { font-size: 9px; color: var(--ink-dim); }
+
+  /* Holdings table */
+  .holdings-section { padding: 20px 28px 40px; }
+  .holdings-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .holdings-table thead th {
+    text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--rule-mid);
+    font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); font-weight: 400;
+  }
+  .holdings-table thead th.num { text-align: right; }
+  .holdings-table tbody td { padding: 11px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .holdings-table tbody td.num { text-align: right; }
+  .holdings-table tbody tr:hover { background: rgba(255,255,255,0.015); }
+
+  .h-ticker { font-weight: 700; font-size: 13px; }
+  .h-name { font-size: 9px; color: var(--ink-dim); }
+  .h-pos { font-size: 9px; padding: 2px 6px; border: 1px solid; letter-spacing: 0.06em; text-transform: uppercase; }
+  .h-pos.BUY { color: var(--buy); border-color: var(--buy); }
+  .h-pos.SHORT { color: var(--short); border-color: var(--short); }
+  .pl-cell { font-family: var(--serif); font-size: 14px; }
+  .pl-cell.gain { color: var(--gain); }
+  .pl-cell.loss { color: var(--loss); }
+  .slippage { font-size: 9px; color: var(--ink-dim); }
+  .price-input-inline {
+    width: 80px; padding: 4px 6px; font-size: 11px; height: 26px;
+    background: #0A0A08; border: 1px solid var(--rule); color: var(--ink); font-family: var(--mono);
+  }
+  .del-btn {
+    background: none; border: none; color: var(--ink-dim); cursor: pointer;
+    font-family: var(--mono); font-size: 14px; padding: 2px 6px; transition: color 0.15s;
+  }
+  .del-btn:hover { color: var(--short); }
+  /* Inline editable entry fields (weight / fill / amount) */
+  .edit-input-inline {
+    width: 82px; padding: 4px 6px; font-size: 11px; height: 26px; text-align: right;
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink); font-family: var(--mono);
+  }
+  .edit-input-inline:focus { border-color: #555540; outline: none; }
+  /* Per-row lock toggle */
+  .lock-btn {
+    background: none; border: none; cursor: pointer; font-size: 12px;
+    padding: 2px 4px; opacity: 0.6; transition: opacity 0.15s;
+  }
+  .lock-btn:hover { opacity: 1; }
+  .locked-row { background: rgba(139, 106, 26, 0.05); }
+  .locked-row:hover { background: rgba(139, 106, 26, 0.09); }
+  .empty-row td { padding: 30px; text-align: center; color: var(--rule-mid); font-style: italic; }
+
+  .footer { border-top: 1px solid var(--rule); padding: 12px 28px; display: flex; justify-content: space-between; align-items: center; }
+  .footer-note { font-size: 9px; color: #2A2A1A; letter-spacing: 0.06em; }
+  .footer-actions { display: flex; gap: 8px; }
+
+  .price-update-bar {
+    padding: 10px 28px; border-bottom: 1px solid var(--rule);
+    display: flex; align-items: center; gap: 12px; font-size: 10px; color: var(--ink-dim);
+    background: rgba(139, 106, 26, 0.04);
+  }
+  .price-update-bar strong { color: var(--ink-mid); }
+
+  /* Rebalance panel */
+  .rebalance-section { padding: 20px 28px; border-bottom: 1px solid var(--rule); background: rgba(46, 107, 62, 0.03); }
+  .rebalance-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .rebalance-title { font-family: var(--serif); font-size: 16px; font-weight: 700; }
+  .rebalance-rules { font-size: 9px; color: var(--ink-dim); letter-spacing: 0.04em; }
+  .rebalance-rules b { color: var(--ink-mid); }
+  .ticket { margin-top: 14px; border: 1px solid var(--rule-mid); }
+  .ticket-row {
+    display: grid; grid-template-columns: 70px 1fr 90px 110px 1fr auto;
+    gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--rule); font-size: 11px;
+  }
+  .ticket-row:last-child { border-bottom: none; }
+  .ticket-action { font-family: var(--serif); font-weight: 700; font-size: 13px; }
+  .ticket-action.buy { color: var(--buy); }
+  .ticket-action.sell { color: var(--short); }
+  .ticket-action.hold { color: var(--ink-dim); }
+  .ticket-ticker { font-weight: 700; }
+  .ticket-detail { color: var(--ink-mid); font-size: 10px; }
+  .ticket-amount { font-family: var(--serif); font-size: 14px; text-align: right; }
+  .ticket-reason { font-size: 9px; color: var(--ink-dim); }
+  .ticket-apply {
+    background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim);
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 5px 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .ticket-apply:hover { border-color: var(--buy); color: var(--buy); }
+  .ticket-summary { padding: 12px 14px; font-size: 10px; color: var(--ink-mid); border-top: 1px solid var(--rule-mid); display: flex; gap: 20px; flex-wrap: wrap; }
+  .ticket-empty { padding: 20px; text-align: center; color: var(--ink-dim); font-style: italic; font-size: 11px; }
+  .rebalance-actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* Reconciliation modal */
+  .recon-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 100; padding: 40px 20px; overflow-y: auto;
+  }
+  .recon-overlay.open { display: block; }
+  .recon-modal {
+    max-width: 880px; margin: 0 auto; background: var(--paper-card);
+    border: 1px solid var(--rule-mid); padding: 0;
+  }
+  .recon-header {
+    padding: 18px 24px; border-bottom: 1px solid var(--rule-mid);
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .recon-title { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+  .recon-sub { font-size: 9px; color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .recon-close { margin-left: auto; background: none; border: none; color: var(--ink-dim); font-size: 18px; cursor: pointer; }
+  .recon-close:hover { color: var(--ink); }
+  .recon-body { padding: 20px 24px; }
+  .recon-rules {
+    font-size: 9px; color: var(--ink-dim); line-height: 1.7; margin-bottom: 16px;
+    padding: 10px 12px; border: 1px solid var(--rule); background: rgba(255,255,255,0.01);
+  }
+  .ticket-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .ticket-table thead th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule-mid); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); font-weight: 400; }
+  .ticket-table thead th.num { text-align: right; }
+  .ticket-table tbody td { padding: 10px; border-bottom: 1px solid var(--rule); }
+  .ticket-table tbody td.num { text-align: right; }
+  .action-tag { font-size: 9px; padding: 2px 8px; border: 1px solid; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+  .action-buy { color: var(--buy); border-color: var(--buy); }
+  .action-sell { color: var(--short); border-color: var(--short); }
+  .action-new { color: var(--gain); border-color: var(--gain); }
+  .action-exit { color: var(--loss); border-color: var(--loss); }
+  .action-hold { color: var(--ink-dim); border-color: var(--rule-mid); }
+  .ticket-row-hold { opacity: 0.45; }
+  .recon-summary { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule-mid); display: flex; gap: 24px; font-size: 11px; }
+  .recon-summary span { color: var(--ink-mid); }
+  .recon-actions { margin-top: 20px; display: flex; gap: 10px; }
+  .recon-apply-btn { background: none; border: 1px solid var(--buy); color: var(--buy); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 20px; cursor: pointer; transition: all 0.15s; }
+  .recon-apply-btn:hover { background: var(--buy); color: var(--paper); }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-title">Furton Research</div>
+  <div class="masthead-sep">·</div>
+  <div class="masthead-sub">Trade Log &amp; Position Tracker</div>
+</div>
+
+<!-- Summary band -->
+<div class="summary-band">
+  <div class="summary-cell">
+    <div class="summary-label">Capital Deployed</div>
+    <div class="summary-value" id="sumDeployed">$0</div>
+    <div class="summary-sub" id="sumPositions">0 positions</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Current Value</div>
+    <div class="summary-value" id="sumValue">$0</div>
+    <div class="summary-sub">at last marked price</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Unrealized P/L</div>
+    <div class="summary-value" id="sumPL">$0</div>
+    <div class="summary-sub" id="sumPLpct">0.0%</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Cash Remaining</div>
+    <div class="summary-value" id="sumCash">$10,000</div>
+    <div class="summary-sub">of starting capital</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Starting Capital</div>
+    <div class="summary-value" id="sumStart">$10,000</div>
+    <div class="summary-sub">
+      <span style="cursor:pointer;text-decoration:underline;" onclick="editStartingCapital()">edit</span>
+    </div>
+  </div>
+</div>
+
+<!-- Entry form -->
+<div class="entry-section">
+  <div class="section-label">Record a trade</div>
+  <div class="entry-grid">
+    <div class="field">
+      <label>Ticker</label>
+      <input type="text" id="inTicker" placeholder="MCD" maxlength="6"
+        oninput="this.value=this.value.toUpperCase(); showTickerName()" />
+      <div class="ticker-name-hint" id="tickerNameHint"></div>
+    </div>
+    <div class="field">
+      <label>Position</label>
+      <select id="inPosition">
+        <option value="BUY">BUY</option>
+        <option value="SHORT">SHORT</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Committee Wt %</label>
+      <input type="text" id="inWeight" placeholder="9.1" />
+    </div>
+    <div class="field">
+      <label>Ref price <span class="field-unit">$ at decision</span></label>
+      <input type="text" id="inRefPrice" placeholder="283.10" />
+      <div class="field-help">Market price when committee decided</div>
+    </div>
+    <div class="field field-price">
+      <label>Fill price <span class="field-unit">$ per share</span></label>
+      <input type="text" id="inFillPrice" placeholder="284.81" />
+      <div class="field-help">Price you paid for one share</div>
+    </div>
+    <div class="field field-amount">
+      <label>Amount <span class="field-unit">total $</span></label>
+      <input type="text" id="inAmount" placeholder="910" />
+      <div class="field-help">Total dollars in the trade</div>
+    </div>
+    <button class="add-btn" onclick="addTrade()">Add →</button>
+  </div>
+  <div class="import-row">
+    <button class="ghost-btn" onclick="document.getElementById('importFile').click()">Import screener JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importScreener(event)" />
+    <span class="import-hint">Import a screener export to start a fresh portfolio from the committee's BUY list. To rebalance an existing portfolio, use the Weekly Rebalance panel below.</span>
+  </div>
+</div>
+
+<!-- Price update reminder -->
+<div class="price-update-bar">
+  <strong>Editing:</strong>
+  <span>Committee Wt, Fill Price, and Amount stay editable on every row until you export &mdash; adjust them anytime to fix discrepancies. Edit "Current Price" to refresh P/L. Exporting the log locks that week's rows (🔒) so your published numbers stay fixed; click a row's lock to reopen it. Stored locally on this device.</span>
+</div>
+
+<!-- Weekly rebalance -->
+<div class="rebalance-section">
+  <div class="rebalance-head">
+    <div class="rebalance-title">Weekly Rebalance</div>
+    <div class="rebalance-rules">
+      Rules: <b>sell entirely</b> when a holding drops off the BUY list ·
+      trade only when off target by <b>3+ points</b> ·
+      <b>reinvest</b> proceeds into new targets
+    </div>
+  </div>
+  <div class="rebalance-actions">
+    <button class="ghost-btn" onclick="document.getElementById('rebalFile').click()">Load this week's screener →</button>
+    <input type="file" id="rebalFile" accept=".json" style="display:none" onchange="loadRebalance(event)" />
+    <span class="import-hint" id="rebalHint">Import a fresh Dow 30 screener export to compare against your current holdings and generate a trade ticket.</span>
+  </div>
+  <div id="ticketWrap" style="display:none;">
+    <div class="ticket" id="ticket"></div>
+  </div>
+</div>
+
+<!-- Holdings -->
+<div class="holdings-section">
+  <table class="holdings-table">
+    <thead>
+      <tr>
+        <th>Stock</th>
+        <th>Position</th>
+        <th class="num">Cmte Wt</th>
+        <th class="num">Ref Price</th>
+        <th class="num">Fill Price</th>
+        <th class="num">Amount</th>
+        <th class="num">Shares</th>
+        <th class="num">Current Price</th>
+        <th class="num">Value</th>
+        <th class="num">Unrealized P/L</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="holdingsBody">
+      <tr class="empty-row"><td colspan="12">No trades logged yet. Record one above, or import a screener export.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="footer-note">Furton Research · Positions stored locally on this device · Not financial advice</div>
+  <div class="footer-actions">
+    <button class="ghost-btn" onclick="exportLog()">Export Log JSON</button>
+    <button class="ghost-btn" onclick="document.getElementById('restoreFile').click()">Restore from backup</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreLog(event)" />
+    <button class="ghost-btn" onclick="clearAll()">Clear All</button>
+  </div>
+</div>
+<div id="restoreToast" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--paper-card);border:1px solid var(--buy);color:var(--ink);padding:12px 20px;font-size:11px;z-index:100;"></div>
+
+<script>
+// ── Weekly rebalance reconciliation ────────────────────────────────────────
+const REBAL_THRESHOLD_PCT = 3;   // drift band: only trim/add held positions off target by 3+ pts
+const CASH_DEPLOY_FLOOR    = 0.02; // ignore leftover cash below 2% of portfolio (rounding noise)
+
+let lastTicket = null;
+
+function loadRebalance(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const portfolio = data.suggested_portfolio || [];
+      if (portfolio.length === 0) { alert('No suggested_portfolio found in this file.'); return; }
+      buildTicket(portfolio);
+    } catch (err) {
+      alert('Could not read that file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function buildTicket(targets) {
+  // Portfolio base = held positions at current market value + idle cash.
+  // Target weights are applied to this base, which is how reinvestment happens:
+  // the committee's weights sum to 100%, so a full reconcile deploys all cash.
+  const held = {};
+  for (const t of trades) if (t.shares > 0) held[t.ticker] = t;
+
+  const deployedAtMarket = Object.values(held).reduce((s,t) => s + positionValue(t), 0);
+  const deployedAtCost   = Object.values(held).reduce((s,t) => s + t.fillPrice * t.shares, 0);
+  const cash      = startingCapital - deployedAtCost;
+  const totalBase = deployedAtMarket + cash;
+
+  const targetMap = {};
+  for (const p of targets) targetMap[p.ticker] = p;
+
+  const actions = [];
+
+  // Pass 1 — held stocks: forced exits and drift trims/adds
+  for (const ticker in held) {
+    const t = held[ticker];
+    const curValue  = positionValue(t);
+    const curWeight = totalBase > 0 ? (curValue / totalBase * 100) : 0;
+    const target    = targetMap[ticker];
+
+    if (!target) {
+      // Rule 1: dropped off the BUY list → sell entirely (always, ignores band)
+      actions.push({
+        action: 'SELL', kind: 'sell-all', ticker, name: t.name,
+        detail: `Exit all ${t.shares.toFixed(2)} sh`,
+        amount: curValue, reason: 'Off committee BUY list',
+      });
+    } else {
+      const targetWeight = target.weight_pct;
+      const drift = targetWeight - curWeight;               // + = under target, need to buy
+      const dollarDelta = (drift / 100) * totalBase;
+      if (Math.abs(drift) >= REBAL_THRESHOLD_PCT) {
+        // Rule 2: drift breaches the 3-pt band → trim or add the difference
+        actions.push({
+          action: dollarDelta > 0 ? 'BUY' : 'SELL', kind: 'adjust', ticker, name: t.name,
+          detail: `${curWeight.toFixed(1)}% \u2192 ${targetWeight.toFixed(1)}% target`,
+          amount: Math.abs(dollarDelta),
+          reason: `Off target by ${Math.abs(drift).toFixed(1)} pts`,
+        });
+      } else {
+        actions.push({
+          action: 'HOLD', kind: 'hold', ticker, name: t.name,
+          detail: `${curWeight.toFixed(1)}% vs ${targetWeight.toFixed(1)}% target`,
+          amount: 0, reason: `Within ${REBAL_THRESHOLD_PCT}-pt band`,
+        });
+      }
+    }
+  }
+
+  // Pass 2 — new BUY-rated stocks not currently held → open position
+  // (A new name is 0% current vs its target, always a large breach, so always trades.)
+  for (const p of targets) {
+    if (!held[p.ticker]) {
+      actions.push({
+        action: 'BUY', kind: 'new', ticker: p.ticker, name: p.name || nameFor(p.ticker),
+        detail: `New position \u00b7 ${p.weight_pct.toFixed(1)}% target`,
+        amount: (p.weight_pct / 100) * totalBase,
+        reason: 'New committee BUY',
+      });
+    }
+  }
+
+  // Pass 3 — reconcile cash. Forced sells free cash that the band might otherwise
+  // strand. Honour the "reinvest proceeds" rule: if meaningful cash is left over
+  // after the banded ticket, deploy it into the most under-weight BUY targets,
+  // regardless of the 3-pt band (this is deploying cash, not chasing drift noise).
+  const grossBuys  = actions.filter(a => a.action === 'BUY').reduce((s,a) => s + a.amount, 0);
+  const grossSells = actions.filter(a => a.action === 'SELL').reduce((s,a) => s + a.amount, 0);
+  let projectedCash = cash + grossSells - grossBuys;
+
+  let reinvestNote = null;
+  if (projectedCash > totalBase * CASH_DEPLOY_FLOOR) {
+    // Find held-and-on-list stocks currently under target but inside the band
+    // (the ones the band suppressed), and top them up with the freed cash,
+    // largest underweight first, until cash is deployed.
+    const underweight = [];
+    for (const ticker in held) {
+      const target = targetMap[ticker];
+      if (!target) continue;
+      const t = held[ticker];
+      const curWeight = (positionValue(t) / totalBase) * 100;
+      const gap = target.weight_pct - curWeight;            // + = room to add
+      const alreadyTrading = actions.some(a => a.ticker === ticker && a.action !== 'HOLD');
+      if (gap > 0 && !alreadyTrading) {
+        underweight.push({ ticker, name: t.name, gapDollars: (gap / 100) * totalBase });
+      }
+    }
+    underweight.sort((a,b) => b.gapDollars - a.gapDollars);
+
+    let toDeploy = projectedCash;
+    const deployments = [];
+    for (const u of underweight) {
+      if (toDeploy <= totalBase * CASH_DEPLOY_FLOOR) break;
+      const add = Math.min(u.gapDollars, toDeploy);
+      if (add > totalBase * 0.005) {                          // skip trivial top-ups
+        deployments.push({ ...u, add });
+        toDeploy -= add;
+      }
+    }
+    // Convert the suppressed-band top-ups into real BUY actions
+    for (const d of deployments) {
+      // remove any matching HOLD row so it's not double-listed
+      const idx = actions.findIndex(a => a.ticker === d.ticker && a.action === 'HOLD');
+      if (idx >= 0) actions.splice(idx, 1);
+      actions.push({
+        action: 'BUY', kind: 'reinvest', ticker: d.ticker, name: d.name,
+        detail: 'Reinvest freed cash',
+        amount: d.add,
+        reason: 'Deploying sale proceeds',
+      });
+      projectedCash -= d.add;
+    }
+    if (projectedCash > totalBase * CASH_DEPLOY_FLOOR) {
+      reinvestNote = `${fmtMoney(projectedCash)} cash remains after reinvestment ` +
+                     `(targets are full). It will sit as cash until next week.`;
+    }
+  } else if (projectedCash < -totalBase * CASH_DEPLOY_FLOOR) {
+    // Buys exceed available cash. Scale all BUY actions down proportionally so
+    // the ticket fits exactly what's available, preserving the committee's
+    // relative weighting among the buys. Sells are untouched (they free cash).
+    const availableForBuys = cash + grossSells;
+    if (grossBuys > 0 && availableForBuys >= 0) {
+      const scale = availableForBuys / grossBuys;   // < 1
+      for (const a of actions) {
+        if (a.action === 'BUY') {
+          a.amount = a.amount * scale;
+          a.reason = a.reason + ` (scaled ${Math.round(scale*100)}% to fit cash)`;
+        }
+      }
+      reinvestNote = `Buys exceeded available cash by ${fmtMoney(-projectedCash)}, ` +
+                     `so all buys were scaled to ${Math.round(scale*100)}% to stay fully invested ` +
+                     `without overdrawing. Relative weights are preserved.`;
+      projectedCash = 0;
+    } else {
+      reinvestNote = `This ticket needs ${fmtMoney(-projectedCash)} more than your ` +
+                     `available cash — trim the largest BUY or reduce a position.`;
+    }
+  }
+
+  // Sort: SELLs first (free cash), then BUYs (largest first), HOLDs last
+  const order = { 'SELL': 0, 'BUY': 1, 'HOLD': 2 };
+  actions.sort((a,b) => (order[a.action] - order[b.action]) || (b.amount - a.amount));
+
+  lastTicket = {
+    actions, totalBase, cash, projectedCash, reinvestNote,
+    date: new Date().toISOString().split('T')[0],
+  };
+  renderTicket();
+}
+
+function renderTicket() {
+  const wrap = document.getElementById('ticketWrap');
+  const el = document.getElementById('ticket');
+  if (!lastTicket) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const acts = lastTicket.actions;
+  const tradeable = acts.filter(a => a.action !== 'HOLD');
+  const holds     = acts.filter(a => a.action === 'HOLD');
+
+  if (acts.length === 0) {
+    el.innerHTML = '<div class="ticket-empty">No holdings to reconcile. Import a screener and add positions first, or use this on your first week to open the full portfolio.</div>';
+    return;
+  }
+
+  let html = '';
+  // Reference actions by index (avoids embedding data — and apostrophes — in onclick)
+  acts.forEach((a, i) => {
+    if (a.action === 'HOLD') return;
+    html += `
+      <div class="ticket-row">
+        <div class="ticket-action ${a.action.toLowerCase()}">${a.action}</div>
+        <div><span class="ticket-ticker">${a.ticker}</span> <span class="ticket-detail">${a.detail}</span></div>
+        <div class="ticket-amount">${fmtMoney(a.amount)}</div>
+        <div class="ticket-reason">${a.reason}</div>
+        <div></div>
+        <div><button class="ticket-apply" onclick="applyTicketAction(${i})">log it</button></div>
+      </div>`;
+  });
+  for (const a of holds) {
+    html += `
+      <div class="ticket-row" style="opacity:0.5;">
+        <div class="ticket-action hold">HOLD</div>
+        <div><span class="ticket-ticker">${a.ticker}</span> <span class="ticket-detail">${a.detail}</span></div>
+        <div class="ticket-amount">—</div>
+        <div class="ticket-reason">${a.reason}</div>
+        <div></div><div></div>
+      </div>`;
+  }
+
+  const buys  = tradeable.filter(a => a.action === 'BUY').reduce((s,a) => s + a.amount, 0);
+  const sells = tradeable.filter(a => a.action === 'SELL').reduce((s,a) => s + a.amount, 0);
+  const nBuys  = tradeable.filter(a => a.action === 'BUY').length;
+  const nSells = tradeable.filter(a => a.action === 'SELL').length;
+
+  html += `
+    <div class="ticket-summary">
+      <span><b style="color:var(--buy)">${nBuys} buy${nBuys!==1?'s':''}</b> ${fmtMoney(buys)}</span>
+      <span><b style="color:var(--short)">${nSells} sell${nSells!==1?'s':''}</b> ${fmtMoney(sells)}</span>
+      <span>${holds.length} held within band</span>
+      <span style="margin-left:auto;color:var(--ink-dim)">Projected cash after: ${fmtMoney(Math.max(0, lastTicket.projectedCash))}</span>
+    </div>`;
+
+  if (lastTicket.reinvestNote) {
+    html += `<div class="ticket-summary" style="color:var(--amber);border-top:none;">⚠ ${lastTicket.reinvestNote}</div>`;
+  }
+
+  if (tradeable.length > 0) {
+    html += `<div class="ticket-summary" style="border-top:none;">
+      <button class="ghost-btn" onclick="applyAllTicket()">Log all ${tradeable.length} trades →</button>
+      <button class="ghost-btn" onclick="clearTicket()">Dismiss ticket</button>
+      <span class="import-hint" style="margin-left:auto;">"Log it" records the intent. Enter actual fill prices on each row after you trade.</span>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function applyTicketAction(index) {
+  const a = lastTicket && lastTicket.actions[index];
+  if (!a) return;
+  _applyOne(a);
+  // Mark as applied so it drops out of the ticket on re-render
+  a.action = 'HOLD'; a.detail = 'logged ✓'; a.reason = '';
+  saveState(); render(); renderTicket();
+}
+
+function applyAllTicket() {
+  if (!lastTicket) return;
+  if (!confirm('Log all trades in this ticket? Sells will close positions; buys will be added as pending-fill rows for you to price after trading.')) return;
+  for (const a of lastTicket.actions) {
+    if (a.action !== 'HOLD') _applyOne(a);
+  }
+  saveState(); render();
+  clearTicket();
+}
+
+function _applyOne(a) {
+  if (a.action === 'SELL' && a.kind === 'sell-all') {
+    trades = trades.filter(t => t.ticker !== a.ticker);
+  } else if (a.action === 'BUY' && (a.kind === 'new' || a.kind === 'reinvest')) {
+    // Add a pending-fill position (or merge into an existing pending one)
+    const existing = trades.find(t => t.ticker === a.ticker && t.pendingFill);
+    if (existing) {
+      existing.amount += Math.round(a.amount);
+    } else {
+      trades.push({
+        id: Date.now() + Math.random(),
+        ticker: a.ticker, name: a.name, position: 'BUY',
+        weight: 0, refPrice: 0, fillPrice: 0, amount: Math.round(a.amount), shares: 0,
+        currentPrice: 0, date: new Date().toISOString().split('T')[0], pendingFill: true,
+      });
+    }
+  } else if (a.kind === 'adjust') {
+    // Trim or add to an existing held position. Adjust the dollar basis and
+    // re-derive shares at the existing fill price as an approximation; the user
+    // updates the exact fill after executing in Schwab.
+    const t = trades.find(x => x.ticker === a.ticker && x.shares > 0);
+    if (t) {
+      const delta = a.action === 'BUY' ? a.amount : -a.amount;
+      t.amount = Math.max(0, t.amount + Math.round(delta));
+      if (t.fillPrice > 0) t.shares = t.amount / t.fillPrice;
+      t.adjustNote = `${a.action === 'BUY' ? 'Added' : 'Trimmed'} ${fmtMoney(a.amount)} — confirm fill`;
+    }
+  }
+}
+
+function clearTicket() {
+  lastTicket = null;
+  document.getElementById('ticketWrap').style.display = 'none';
+}
+
+// ── State + persistence ────────────────────────────────────────────────────
+let trades = [];
+let startingCapital = 10000;
+
+async function loadState() {
+  try {
+    const t = await window.storage.get('furton:trades');
+    if (t && t.value) trades = JSON.parse(t.value);
+  } catch (e) { trades = []; }
+  try {
+    const c = await window.storage.get('furton:startingCapital');
+    if (c && c.value) startingCapital = parseFloat(c.value);
+  } catch (e) { startingCapital = 10000; }
+  render();
+}
+
+async function saveState() {
+  try {
+    await window.storage.set('furton:trades', JSON.stringify(trades));
+    await window.storage.set('furton:startingCapital', String(startingCapital));
+  } catch (e) {
+    console.error('Save failed', e);
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function parseNum(s) {
+  if (typeof s === 'number') return s;
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtMoney(n) {
+  return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtMoney2(n) {
+  return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── Dow 30 ticker → company name (auto-fill, no typing) ────────────────────
+const DOW30_NAMES = {
+  AAPL: "Apple Inc.", AMGN: "Amgen Inc.", AMZN: "Amazon.com Inc.",
+  AXP: "American Express Co.", BA: "Boeing Co.", CAT: "Caterpillar Inc.",
+  CRM: "Salesforce Inc.", CSCO: "Cisco Systems Inc.", CVX: "Chevron Corp.",
+  DIS: "Walt Disney Co.", GS: "Goldman Sachs Group Inc.", HD: "Home Depot Inc.",
+  HON: "Honeywell International Inc.", IBM: "International Business Machines",
+  JNJ: "Johnson & Johnson", JPM: "JPMorgan Chase & Co.", KO: "Coca-Cola Co.",
+  MCD: "McDonald's Corp.", MMM: "3M Co.", MRK: "Merck & Co. Inc.",
+  MSFT: "Microsoft Corp.", NKE: "Nike Inc.", NVDA: "NVIDIA Corp.",
+  PG: "Procter & Gamble Co.", SHW: "Sherwin-Williams Co.", TRV: "Travelers Cos. Inc.",
+  UNH: "UnitedHealth Group Inc.", V: "Visa Inc.", VZ: "Verizon Communications Inc.",
+  WMT: "Walmart Inc.",
+};
+function nameFor(ticker) { return DOW30_NAMES[ticker] || ticker; }
+
+function showTickerName() {
+  const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
+  const hint = document.getElementById('tickerNameHint');
+  hint.textContent = ticker && DOW30_NAMES[ticker] ? DOW30_NAMES[ticker] : '';
+}
+
+// ── Add / import / delete ──────────────────────────────────────────────────
+function addTrade() {
+  const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
+  if (!ticker) { alert('Enter a ticker.'); return; }
+  const fillPrice = parseNum(document.getElementById('inFillPrice').value);
+  const amount    = parseNum(document.getElementById('inAmount').value);
+  const refPrice  = parseNum(document.getElementById('inRefPrice').value);  // decision-time price (optional)
+  if (fillPrice <= 0 || amount <= 0) { alert('Enter both the fill price (per share) and the total dollar amount.'); return; }
+
+  trades.push({
+    id: Date.now() + Math.random(),
+    ticker,
+    name: nameFor(ticker),
+    position: document.getElementById('inPosition').value,
+    weight: parseNum(document.getElementById('inWeight').value),
+    refPrice,
+    fillPrice,
+    amount,
+    shares: amount / fillPrice,
+    currentPrice: fillPrice,  // defaults to fill until updated
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  ['inTicker', 'inWeight', 'inRefPrice', 'inFillPrice', 'inAmount'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('tickerNameHint').textContent = '';
+  saveState(); render();
+}
+
+function importScreener(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const portfolio = data.suggested_portfolio || [];
+      if (portfolio.length === 0) { alert('No suggested_portfolio found in this file.'); return; }
+      // Pre-fill committee BUYs with weights; user still enters fill prices after trading
+      let added = 0;
+      for (const p of portfolio) {
+        const dollarAmount = startingCapital * (p.weight_pct / 100);
+        trades.push({
+          id: Date.now() + Math.random() + added,
+          ticker: p.ticker,
+          name: p.name || nameFor(p.ticker),
+          position: 'BUY',
+          weight: p.weight_pct,
+          refPrice: p.reference_price ?? p.price ?? 0,   // decision-time price if the screener provided one
+          fillPrice: 0,        // to be filled in after the trade executes
+          amount: Math.round(dollarAmount),
+          shares: 0,
+          currentPrice: 0,
+          date: new Date().toISOString().split('T')[0],
+          pendingFill: true,
+        });
+        added++;
+      }
+      saveState(); render();
+      alert(`Imported ${added} committee BUY recommendations. Enter your actual fill prices on each row after you trade.`);
+    } catch (err) {
+      alert('Could not read that file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function deleteTrade(id) {
+  trades = trades.filter(t => t.id !== id);
+  saveState(); render();
+}
+
+function updateField(id, field, value) {
+  const t = trades.find(x => x.id === id);
+  if (!t) return;
+  // Locked rows are published — only the live "current price" can still move.
+  if (t.locked && field !== 'currentPrice') { render(); return; }
+  const num = parseNum(value);
+  t[field] = num;
+  // Recompute dependent fields
+  if (field === 'fillPrice') {
+    if (num > 0) { t.shares = t.amount / num; t.pendingFill = false; }
+    else { t.shares = 0; t.pendingFill = true; }
+  }
+  if (field === 'amount') {
+    t.shares = t.fillPrice > 0 ? num / t.fillPrice : 0;
+  }
+  // weight and currentPrice are stored directly and used live
+  saveState(); render();
+}
+
+function unlockTrade(id) {
+  const t = trades.find(x => x.id === id);
+  if (!t) return;
+  t.locked = false;
+  saveState(); render();
+}
+
+function lockTrade(id) {
+  const t = trades.find(x => x.id === id);
+  if (!t) return;
+  t.locked = true;
+  saveState(); render();
+}
+
+// ── Calculations ───────────────────────────────────────────────────────────
+function positionValue(t) {
+  const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
+  return t.shares * px;
+}
+function positionPL(t) {
+  if (t.fillPrice <= 0 || t.shares <= 0) return 0;
+  const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
+  const dir = t.position === 'SHORT' ? -1 : 1;
+  return dir * (px - t.fillPrice) * t.shares;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const body = document.getElementById('holdingsBody');
+
+  if (trades.length === 0) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="12">No trades logged yet. Record one above, or import a screener export.</td></tr>';
+  } else {
+    body.innerHTML = trades.map(t => {
+      const value = positionValue(t);
+      const pl    = positionPL(t);
+      const plPct = (t.fillPrice > 0 && t.shares > 0) ? (pl / (t.fillPrice * t.shares) * 100) : 0;
+      const plClass = pl > 0.005 ? 'gain' : pl < -0.005 ? 'loss' : '';
+      const slip = (!t.pendingFill && t.fillPrice > 0 && t.weight > 0)
+        ? '' : (t.pendingFill ? '<div class="slippage">awaiting fill price</div>' : '');
+
+      // Execution slippage: fill price vs decision-time reference price.
+      const hasSlip = t.refPrice > 0 && t.fillPrice > 0;
+      const slipPct = hasSlip ? (t.fillPrice - t.refPrice) / t.refPrice * 100 : 0;
+      const slipAdverse = hasSlip && (t.position === 'SHORT' ? slipPct < 0 : slipPct > 0);
+      const slipHtml = hasSlip
+        ? `<div class="slippage" style="color:${slipAdverse ? 'var(--loss)' : 'var(--ink-dim)'}">slip ${slipPct >= 0 ? '+' : ''}${slipPct.toFixed(2)}%</div>`
+        : '';
+
+      const locked = !!t.locked;
+      return `
+        <tr${locked ? ' class="locked-row"' : ''}>
+          <td><div class="h-ticker">${t.ticker}</div><div class="h-name">${t.name}</div></td>
+          <td><span class="h-pos ${t.position}">${t.position}</span></td>
+          <td class="num">
+            ${locked
+              ? (t.weight > 0 ? t.weight.toFixed(1) + '%' : '—')
+              : `<input class="edit-input-inline" value="${t.weight > 0 ? t.weight : ''}" placeholder="wt %" onchange="updateField(${t.id},'weight',this.value)" />`}
+          </td>
+          <td class="num">
+            ${locked
+              ? (t.refPrice > 0 ? fmtMoney2(t.refPrice) : '—')
+              : `<input class="edit-input-inline" value="${t.refPrice > 0 ? t.refPrice : ''}" placeholder="ref $" onchange="updateField(${t.id},'refPrice',this.value)" />`}
+          </td>
+          <td class="num">
+            ${locked
+              ? (t.fillPrice > 0 ? fmtMoney2(t.fillPrice) : '—')
+              : `<input class="edit-input-inline" value="${t.fillPrice > 0 ? t.fillPrice : ''}" placeholder="fill $" onchange="updateField(${t.id},'fillPrice',this.value)" />`}
+            ${slipHtml}
+          </td>
+          <td class="num">
+            ${locked
+              ? fmtMoney(t.amount)
+              : `<input class="edit-input-inline" value="${t.amount > 0 ? t.amount : ''}" placeholder="$ total" onchange="updateField(${t.id},'amount',this.value)" />`}
+          </td>
+          <td class="num">${t.shares > 0 ? t.shares.toFixed(3) : '—'}</td>
+          <td class="num">
+            <input class="price-input-inline" value="${t.currentPrice > 0 ? t.currentPrice : ''}"
+              placeholder="mkt $" onchange="updateField(${t.id},'currentPrice',this.value)" />
+          </td>
+          <td class="num">${t.shares > 0 ? fmtMoney(value) : '—'}</td>
+          <td class="num pl-cell ${plClass}">
+            ${t.shares > 0 ? (pl >= 0 ? '+' : '') + fmtMoney2(pl) : '—'}
+            ${t.shares > 0 ? `<div class="slippage">${plPct >= 0 ? '+' : ''}${plPct.toFixed(1)}%</div>` : slip}
+          </td>
+          <td><span style="font-size:9px;color:var(--ink-dim)">${t.date}</span></td>
+          <td style="white-space:nowrap;">
+            ${locked
+              ? `<button class="lock-btn" onclick="unlockTrade(${t.id})" title="Locked after export. Click to edit this row again.">🔒</button>`
+              : `<button class="lock-btn" onclick="lockTrade(${t.id})" title="Editable. Click to lock this row.">🔓</button>`}
+            <button class="del-btn" onclick="deleteTrade(${t.id})" title="Remove">✕</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Summary
+  const deployed = trades.reduce((s,t) => s + (t.shares > 0 ? t.fillPrice * t.shares : 0), 0);
+  const curValue = trades.reduce((s,t) => s + (t.shares > 0 ? positionValue(t) : 0), 0);
+  const totalPL  = trades.reduce((s,t) => s + positionPL(t), 0);
+  const plPct    = deployed > 0 ? (totalPL / deployed * 100) : 0;
+  const cash     = startingCapital - deployed;
+
+  document.getElementById('sumDeployed').textContent = fmtMoney(deployed);
+  document.getElementById('sumPositions').textContent = `${trades.length} position${trades.length!==1?'s':''}`;
+  document.getElementById('sumValue').textContent = fmtMoney(curValue);
+  const plEl = document.getElementById('sumPL');
+  plEl.textContent = (totalPL >= 0 ? '+' : '') + fmtMoney2(totalPL);
+  plEl.className = 'summary-value ' + (totalPL > 0.005 ? 'gain' : totalPL < -0.005 ? 'loss' : '');
+  document.getElementById('sumPLpct').textContent = (plPct >= 0 ? '+' : '') + plPct.toFixed(1) + '%';
+  document.getElementById('sumCash').textContent = fmtMoney(cash);
+  document.getElementById('sumStart').textContent = fmtMoney(startingCapital);
+}
+
+// ── Misc actions ───────────────────────────────────────────────────────────
+function editStartingCapital() {
+  const v = prompt('Starting capital ($):', startingCapital);
+  if (v === null) return;
+  const n = parseNum(v);
+  if (n > 0) { startingCapital = n; saveState(); render(); }
+}
+
+function exportLog() {
+  const deployed = trades.reduce((s,t) => s + (t.shares > 0 ? t.fillPrice * t.shares : 0), 0);
+  const record = {
+    exported: new Date().toISOString(),
+    starting_capital: startingCapital,
+    capital_deployed: deployed,
+    cash_remaining: startingCapital - deployed,
+    total_unrealized_pl: trades.reduce((s,t) => s + positionPL(t), 0),
+    positions: trades.map(t => ({
+      ticker: t.ticker, name: t.name, position: t.position,
+      committee_weight_pct: t.weight,
+      reference_price: t.refPrice || 0,
+      fill_price: t.fillPrice,
+      slippage_pct: (t.refPrice > 0 && t.fillPrice > 0) ? +((t.fillPrice - t.refPrice) / t.refPrice * 100).toFixed(3) : null,
+      amount: t.amount, shares: t.shares, current_price: t.currentPrice,
+      value: positionValue(t), unrealized_pl: positionPL(t), date: t.date,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `furton_tradelog_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // This week's log is now downloaded/published — lock its entries so the
+  // public numbers stay fixed. Each row can be reopened with its lock button.
+  let newlyLocked = 0;
+  trades.forEach(t => { if (!t.locked) { t.locked = true; newlyLocked++; } });
+  saveState();
+  render();
+  showToast(`Log downloaded · ${newlyLocked} entr${newlyLocked === 1 ? 'y' : 'ies'} locked for publication. Click the 🔒 on a row to edit it again.`);
+}
+
+async function clearAll() {
+  if (!confirm('Delete all logged trades? This cannot be undone.')) return;
+  trades = [];
+  await saveState();
+  render();
+}
+
+function showToast(msg, ok = true) {
+  const t = document.getElementById('restoreToast');
+  t.textContent = msg;
+  t.style.borderColor = ok ? 'var(--buy)' : 'var(--short)';
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+function restoreLog(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const positions = data.positions;
+      if (!Array.isArray(positions)) {
+        showToast('✗ That file is not a trade-log backup (no positions found).', false);
+        event.target.value = '';
+        return;
+      }
+      if (trades.length > 0 &&
+          !confirm(`Restore will replace your current ${trades.length} position(s) with the ${positions.length} from this backup. Continue?`)) {
+        event.target.value = '';
+        return;
+      }
+      // Map the exported snake_case format back to internal trade objects
+      trades = positions.map((p, i) => ({
+        id: Date.now() + Math.random() + i,
+        ticker: p.ticker,
+        name: p.name || nameFor(p.ticker),
+        position: p.position || 'BUY',
+        weight: p.committee_weight_pct ?? p.weight ?? 0,
+        refPrice: p.reference_price ?? p.refPrice ?? 0,
+        fillPrice: p.fill_price ?? p.fillPrice ?? 0,
+        amount: p.amount ?? 0,
+        shares: p.shares ?? 0,
+        currentPrice: p.current_price ?? p.currentPrice ?? 0,
+        date: p.date || new Date().toISOString().split('T')[0],
+        pendingFill: (p.fill_price ?? p.fillPrice ?? 0) <= 0,
+      }));
+      if (data.starting_capital) startingCapital = data.starting_capital;
+      saveState();
+      render();
+      showToast(`✓ Restored ${trades.length} position(s) from backup.`);
+    } catch (err) {
+      showToast('✗ Could not read that file: ' + err.message, false);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+loadState();
+</script>
+</body>
+</html>

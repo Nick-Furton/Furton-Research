@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furton Research — Performance vs Dow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #E8E2D0; --ink-dim: #7A7060; --ink-mid: #A09880;
+    --paper: #0C0C0A; --paper-card: #0F0F0C; --rule: #222218; --rule-mid: #333328;
+    --acct: #5A7A2E; --acct-bright: #8FB54A; --dow: #6E84A8; --alpha: #C28A3A;
+    --gain: #3E8B3E; --loss: #B5341A;
+    --mono: 'Courier Prime', monospace; --serif: 'Playfair Display', serif;
+  }
+  body { background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 13px; line-height: 1.6; min-height: 100vh; }
+
+  .masthead { border-bottom: 1px solid var(--rule-mid); padding: 16px 28px; display: flex; align-items: center; gap: 16px; }
+  .masthead-title { font-family: var(--serif); font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .masthead-sep { color: var(--rule-mid); font-size: 20px; }
+  .masthead-sub { font-size: 10px; color: var(--ink-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .summary-band { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
+  .summary-cell { padding: 16px 24px; border-right: 1px solid var(--rule); }
+  .summary-cell:last-child { border-right: none; }
+  .summary-label { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .summary-value { font-family: var(--serif); font-size: 24px; font-weight: 700; }
+  .summary-value.gain { color: var(--gain); } .summary-value.loss { color: var(--loss); }
+  .summary-value.acct { color: var(--acct-bright); } .summary-value.dow { color: var(--dow); }
+  .summary-sub { font-size: 9px; color: var(--ink-dim); margin-top: 2px; }
+
+  /* Risk-adjusted metrics band */
+  .risk-band { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
+  .risk-cell { padding: 14px 24px; border-right: 1px solid var(--rule); }
+  .risk-cell:last-child { border-right: none; }
+  .risk-label { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .risk-value { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--ink); }
+  .risk-value.dim { color: var(--rule-mid); font-size: 15px; font-style: italic; }
+  .risk-sub { font-size: 8px; color: var(--ink-dim); margin-top: 3px; letter-spacing: 0.04em; }
+  .risk-flag { padding: 11px 28px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; gap: 11px; font-size: 11px; line-height: 1.5; }
+  .risk-flag .flag-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .risk-flag.ok { color: var(--ink-mid); }
+  .risk-flag.ok .flag-dot { background: var(--gain); }
+  .risk-flag.tripped { color: var(--loss); background: rgba(181,52,26,0.06); }
+  .risk-flag.tripped .flag-dot { background: var(--loss); }
+  .risk-flag.na { color: var(--ink-dim); }
+  .risk-flag.na .flag-dot { background: var(--rule-mid); }
+
+  .entry-section { padding: 20px 28px; border-bottom: 1px solid var(--rule); }
+  .section-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 14px; }
+  .entry-grid { display: grid; grid-template-columns: 1fr 1.1fr 1.1fr 1fr auto; gap: 12px; align-items: start; max-width: 880px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); min-height: 20px; line-height: 1.3; display: flex; align-items: flex-end; }
+  .field-help { font-size: 8px; color: var(--ink-dim); margin-top: 4px; letter-spacing: 0.03em; }
+  input {
+    background: #0A0A08; border: 1px solid var(--rule-mid); color: var(--ink);
+    font-family: var(--mono); font-size: 13px; padding: 8px 10px; outline: none; width: 100%;
+    transition: border-color 0.2s; box-sizing: border-box; height: 36px;
+  }
+  input:focus { border-color: #555540; }
+  input::placeholder { color: #2A2A1A; }
+  .add-btn {
+    background: none; border: 1px solid var(--acct); color: var(--acct-bright);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0 20px; cursor: pointer; transition: all 0.15s; white-space: nowrap; height: 36px; margin-top: 25px;
+  }
+  .add-btn:hover { background: var(--acct); color: var(--paper); }
+  .entry-note { font-size: 9px; color: var(--ink-dim); margin-top: 12px; letter-spacing: 0.03em; line-height: 1.7; max-width: 720px; }
+
+  .chart-section { padding: 24px 28px; border-bottom: 1px solid var(--rule); }
+  .chart-legend { display: flex; gap: 20px; margin-bottom: 14px; font-size: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; color: var(--ink-mid); }
+  .legend-swatch { width: 16px; height: 3px; }
+  svg { width: 100%; height: auto; display: block; }
+  .chart-empty { color: var(--rule-mid); font-style: italic; font-size: 11px; padding: 40px 0; text-align: center; }
+
+  .table-section { padding: 20px 28px 40px; }
+  .perf-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .perf-table thead th { text-align: right; padding: 9px 12px; border-bottom: 1px solid var(--rule-mid); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); font-weight: 400; }
+  .perf-table thead th.left { text-align: left; }
+  .perf-table tbody td { padding: 10px 12px; border-bottom: 1px solid var(--rule); text-align: right; }
+  .perf-table tbody td.left { text-align: left; }
+  .perf-table tbody tr:hover { background: rgba(255,255,255,0.015); }
+  .ret-pos { color: var(--gain); } .ret-neg { color: var(--loss); }
+  .alpha-pos { color: var(--acct-bright); font-weight: 700; } .alpha-neg { color: var(--loss); font-weight: 700; }
+  .baseline-tag { font-size: 8px; color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+  .del-btn { background: none; border: none; color: var(--ink-dim); cursor: pointer; font-family: var(--mono); font-size: 13px; padding: 2px 6px; transition: color 0.15s; }
+  .del-btn:hover { color: var(--loss); }
+  .empty-row td { padding: 30px; text-align: center; color: var(--rule-mid); font-style: italic; }
+
+  .footer { border-top: 1px solid var(--rule); padding: 12px 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .footer-note { font-size: 9px; color: #2A2A1A; letter-spacing: 0.06em; }
+  .footer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ghost-btn { background: none; border: 1px solid var(--rule-mid); color: var(--ink-dim); font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 14px; cursor: pointer; transition: all 0.15s; }
+  .ghost-btn:hover { border-color: var(--ink-dim); color: var(--ink); }
+  .toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--paper-card); border: 1px solid var(--acct); color: var(--ink); padding: 12px 20px; font-size: 11px; z-index: 100; }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-title">Furton Research</div>
+  <div class="masthead-sep">·</div>
+  <div class="masthead-sub">Performance vs Dow Jones</div>
+</div>
+
+<div class="summary-band">
+  <div class="summary-cell">
+    <div class="summary-label">Committee Return</div>
+    <div class="summary-value acct" id="sumAcct">—</div>
+    <div class="summary-sub">since inception</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Dow Return</div>
+    <div class="summary-value dow" id="sumDow">—</div>
+    <div class="summary-sub">since inception</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Alpha (Committee − Dow)</div>
+    <div class="summary-value" id="sumAlpha">—</div>
+    <div class="summary-sub" id="sumAlphaSub">the headline result</div>
+  </div>
+  <div class="summary-cell">
+    <div class="summary-label">Weeks Tracked</div>
+    <div class="summary-value" id="sumWeeks">0</div>
+    <div class="summary-sub" id="sumSince">no data yet</div>
+  </div>
+</div>
+
+<!-- Risk-adjusted metrics -->
+<div class="risk-band">
+  <div class="risk-cell">
+    <div class="risk-label">Sharpe Ratio</div>
+    <div class="risk-value dim" id="riskSharpe">—</div>
+    <div class="risk-sub">annualized · rf 3.8%</div>
+  </div>
+  <div class="risk-cell">
+    <div class="risk-label">Volatility</div>
+    <div class="risk-value dim" id="riskVol">—</div>
+    <div class="risk-sub">annualized std of returns</div>
+  </div>
+  <div class="risk-cell">
+    <div class="risk-label">Max Drawdown</div>
+    <div class="risk-value dim" id="riskMDD">—</div>
+    <div class="risk-sub">largest peak-to-trough</div>
+  </div>
+  <div class="risk-cell">
+    <div class="risk-label">Information Ratio</div>
+    <div class="risk-value dim" id="riskIR">—</div>
+    <div class="risk-sub">active return ÷ tracking error</div>
+  </div>
+</div>
+<div class="risk-flag na" id="riskFlag">
+  <span class="flag-dot"></span>
+  <span id="riskFlagText">Drawdown-override monitor — needs at least two weeks of data.</span>
+</div>
+
+<div class="entry-section">
+  <div class="section-label">Record this week</div>
+  <div class="entry-grid">
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="inDate" />
+    </div>
+    <div class="field">
+      <label>Account value <span style="color:var(--ink-dim)">total $</span></label>
+      <input type="text" id="inAcct" placeholder="10,000" />
+      <div class="field-help">Your total Schwab account value</div>
+    </div>
+    <div class="field">
+      <label>Dow level <span style="color:var(--ink-dim)">index</span></label>
+      <input type="text" id="inDow" placeholder="44,000" />
+      <div class="field-help">Dow Jones Industrial Average close</div>
+    </div>
+    <div class="field">
+      <label>Dividends <span style="color:var(--ink-dim)">this period $</span></label>
+      <input type="text" id="inDiv" placeholder="0" />
+      <div class="field-help">Cash dividends received since last entry (optional)</div>
+    </div>
+    <button class="add-btn" onclick="addEntry()">Add →</button>
+  </div>
+  <div class="entry-note">
+    Enter both numbers once a week, ideally the same day each week (e.g. Friday close). The first entry sets the baseline both tracks are measured from. The headline result is the gap between the two return lines.
+  </div>
+</div>
+
+<div class="chart-section">
+  <div class="chart-legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--acct-bright)"></span> Committee (your account)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--dow)"></span> Dow Jones</div>
+  </div>
+  <div id="chartWrap"><div class="chart-empty">Add at least two weeks of data to see the performance chart.</div></div>
+</div>
+
+<div class="table-section">
+  <table class="perf-table">
+    <thead>
+      <tr>
+        <th class="left">Date</th>
+        <th>Account $</th>
+        <th>Committee Return</th>
+        <th>Dow Level</th>
+        <th>Dow Return</th>
+        <th>Alpha</th>
+        <th>Dividends</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="perfBody">
+      <tr class="empty-row"><td colspan="8">No entries yet. Record your first week above to set the baseline.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="footer-note">Furton Research · Total value vs Dow price level · Not financial advice</div>
+  <div class="footer-actions">
+    <button class="ghost-btn" onclick="exportJSON()">Export JSON</button>
+    <button class="ghost-btn" onclick="exportCSV()">Export CSV</button>
+    <button class="ghost-btn" onclick="document.getElementById('restoreFile').click()">Restore from backup</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(event)" />
+    <button class="ghost-btn" onclick="clearAll()">Clear All</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let entries = [];   // [{date, acct, dow, div}]  div = dividends received this period ($)
+
+const RISK_FREE_ANNUAL  = 0.038;   // documented constant for Sharpe excess return (3.8%)
+const DD_OVERRIDE_VS_DOW = 10;     // drawdown-override flag: trails Dow by >= 10 points
+
+// Sample standard deviation (n-1); null if fewer than 2 observations.
+function stdev(arr) {
+  const n = arr.length;
+  if (n < 2) return null;
+  const mean = arr.reduce((s, x) => s + x, 0) / n;
+  const v = arr.reduce((s, x) => s + (x - mean) * (x - mean), 0) / (n - 1);
+  return Math.sqrt(v);
+}
+
+// Risk-adjusted metrics from the account-value series (and Dow for the active leg).
+// Degrades gracefully: drawdown needs >=2 points; Sharpe/vol/IR need >=3.
+function riskMetrics(rows) {
+  const out = { sharpe: null, vol: null, maxDD: null, infoRatio: null,
+                trackingError: null, periodsPerYear: null, alpha: null, ddFlag: 'na' };
+  if (!rows || rows.length < 2) return out;
+
+  // Annualization factor from the observed sampling cadence (~weekly => ~52).
+  const days = (new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) / 86400000;
+  const avgGap = days / (rows.length - 1);
+  const ppy = (avgGap > 0 && isFinite(avgGap)) ? 365.25 / avgGap : 52;
+  out.periodsPerYear = ppy;
+  const annualize = Math.sqrt(ppy);
+
+  // Periodic simple returns
+  const acctR = [], activeR = [];
+  for (let i = 1; i < rows.length; i++) {
+    const ra = rows[i].acct / rows[i - 1].acct - 1;
+    const rd = rows[i].dow  / rows[i - 1].dow  - 1;
+    acctR.push(ra); activeR.push(ra - rd);
+  }
+
+  // Max drawdown on the account-value series (>=2 points)
+  let peak = rows[0].acct, mdd = 0;
+  for (const r of rows) { if (r.acct > peak) peak = r.acct; const dd = r.acct / peak - 1; if (dd < mdd) mdd = dd; }
+  out.maxDD = mdd * 100;   // negative %, e.g. -8.3
+
+  // Sharpe + annualized volatility (>=2 returns)
+  const sd = stdev(acctR);
+  if (sd !== null && sd > 0) {
+    const rfP = RISK_FREE_ANNUAL / ppy;
+    const meanEx = acctR.reduce((s, x) => s + x, 0) / acctR.length - rfP;
+    out.sharpe = (meanEx / sd) * annualize;
+    out.vol = sd * annualize * 100;
+  }
+
+  // Information ratio: mean active return / tracking error (>=2 active returns)
+  const te = stdev(activeR);
+  if (te !== null && te > 0) {
+    const meanA = activeR.reduce((s, x) => s + x, 0) / activeR.length;
+    out.infoRatio = (meanA / te) * annualize;
+    out.trackingError = te * annualize * 100;
+  }
+
+  // Drawdown-override flag (relative-to-Dow): current cumulative alpha vs threshold
+  const last = rows[rows.length - 1];
+  out.alpha = last.acctRet - last.dowRet;
+  out.ddFlag = out.alpha <= -DD_OVERRIDE_VS_DOW ? 'tripped' : 'ok';
+  return out;
+}
+
+function renderRisk(rows) {
+  const m = riskMetrics(rows);
+  const set = (id, val, fmt) => {
+    const el = document.getElementById(id);
+    if (val === null || val === undefined || isNaN(val)) { el.textContent = '—'; el.className = 'risk-value dim'; }
+    else { el.textContent = fmt(val); el.className = 'risk-value'; }
+  };
+  set('riskSharpe', m.sharpe,    v => v.toFixed(2));
+  set('riskVol',    m.vol,       v => v.toFixed(1) + '%');
+  set('riskMDD',    m.maxDD,     v => v.toFixed(1) + '%');
+  set('riskIR',     m.infoRatio, v => (v >= 0 ? '+' : '') + v.toFixed(2));
+
+  const flag = document.getElementById('riskFlag');
+  const txt  = document.getElementById('riskFlagText');
+  if (m.ddFlag === 'tripped') {
+    flag.className = 'risk-flag tripped';
+    txt.innerHTML = `<b>Override triggered</b> — committee trails the Dow by ${Math.abs(m.alpha).toFixed(1)} pts ` +
+                    `(threshold ${DD_OVERRIDE_VS_DOW} pts). Pause and review before trading.`;
+  } else if (m.ddFlag === 'ok') {
+    flag.className = 'risk-flag ok';
+    txt.innerHTML = `Drawdown-override monitor clear — alpha ${(m.alpha >= 0 ? '+' : '')}${m.alpha.toFixed(1)} pts ` +
+                    `vs the ${DD_OVERRIDE_VS_DOW}-pt trailing threshold.`;
+  } else {
+    flag.className = 'risk-flag na';
+    txt.textContent = 'Drawdown-override monitor — needs at least two weeks of data.';
+  }
+}
+
+async function load() {
+  try {
+    const r = await window.storage.get('furton:benchmark');
+    if (r && r.value) entries = JSON.parse(r.value);
+  } catch (e) { entries = []; }
+  // default date = today
+  document.getElementById('inDate').value = new Date().toISOString().split('T')[0];
+  render();
+}
+async function save() {
+  try { await window.storage.set('furton:benchmark', JSON.stringify(entries)); }
+  catch (e) { console.error('Save failed', e); }
+}
+
+function parseNum(s) {
+  if (typeof s === 'number') return s;
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtMoney(n) { return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+function fmtPct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+function fmtNum(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+function addEntry() {
+  const date = document.getElementById('inDate').value;
+  const acct = parseNum(document.getElementById('inAcct').value);
+  const dow  = parseNum(document.getElementById('inDow').value);
+  const div  = parseNum(document.getElementById('inDiv').value);   // dividends this period (optional)
+  if (!date) { showToast('Pick a date.', false); return; }
+  if (acct <= 0 || dow <= 0) { showToast('Enter both account value and Dow level.', false); return; }
+
+  // Replace if an entry already exists for this date, else add
+  const existing = entries.findIndex(e => e.date === date);
+  if (existing >= 0) entries[existing] = { date, acct, dow, div };
+  else entries.push({ date, acct, dow, div });
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  document.getElementById('inAcct').value = '';
+  document.getElementById('inDow').value = '';
+  document.getElementById('inDiv').value = '';
+  // advance default date by 7 days for convenience
+  const d = new Date(date); d.setDate(d.getDate() + 7);
+  document.getElementById('inDate').value = d.toISOString().split('T')[0];
+  save(); render();
+}
+
+function deleteEntry(date) {
+  entries = entries.filter(e => e.date !== date);
+  save(); render();
+}
+
+function computed() {
+  if (entries.length === 0) return [];
+  const base = entries[0];
+  return entries.map(e => ({
+    ...e,
+    div:     e.div || 0,
+    acctRet: (e.acct / base.acct - 1) * 100,
+    dowRet:  (e.dow / base.dow - 1) * 100,
+    get alpha() { return this.acctRet - this.dowRet; },
+  }));
+}
+
+function render() {
+  const rows = computed();
+  const body = document.getElementById('perfBody');
+
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="8">No entries yet. Record your first week above to set the baseline.</td></tr>';
+  } else {
+    body.innerHTML = rows.map((r, i) => {
+      const isBase = i === 0;
+      const alpha = r.alpha;
+      return `
+        <tr>
+          <td class="left">${r.date}${isBase ? ' <span class="baseline-tag">baseline</span>' : ''}</td>
+          <td>${fmtMoney(r.acct)}</td>
+          <td class="${r.acctRet >= 0 ? 'ret-pos' : 'ret-neg'}">${isBase ? '—' : fmtPct(r.acctRet)}</td>
+          <td>${fmtNum(r.dow)}</td>
+          <td class="${r.dowRet >= 0 ? 'ret-pos' : 'ret-neg'}">${isBase ? '—' : fmtPct(r.dowRet)}</td>
+          <td class="${alpha >= 0 ? 'alpha-pos' : 'alpha-neg'}">${isBase ? '—' : fmtPct(alpha)}</td>
+          <td>${r.div > 0 ? fmtMoney(r.div) : '—'}</td>
+          <td><button class="del-btn" onclick="deleteEntry('${r.date}')" title="Remove">✕</button></td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Summary
+  if (rows.length >= 1) {
+    const last = rows[rows.length - 1];
+    const aEl = document.getElementById('sumAcct');
+    const dEl = document.getElementById('sumDow');
+    const alEl = document.getElementById('sumAlpha');
+    if (rows.length === 1) {
+      aEl.textContent = '0.00%'; dEl.textContent = '0.00%'; alEl.textContent = '0.00%';
+      alEl.className = 'summary-value';
+    } else {
+      aEl.textContent = fmtPct(last.acctRet);
+      dEl.textContent = fmtPct(last.dowRet);
+      alEl.textContent = fmtPct(last.alpha);
+      alEl.className = 'summary-value ' + (last.alpha >= 0 ? 'gain' : 'loss');
+    }
+    document.getElementById('sumAlphaSub').textContent =
+      rows.length < 2 ? 'the headline result' :
+      (last.alpha >= 0 ? 'committee ahead of the Dow' : 'committee behind the Dow');
+    document.getElementById('sumWeeks').textContent = rows.length;
+    document.getElementById('sumSince').textContent = 'since ' + rows[0].date;
+  } else {
+    ['sumAcct','sumDow','sumAlpha'].forEach(id => { document.getElementById(id).textContent = '—'; document.getElementById(id).className = 'summary-value'; });
+    document.getElementById('sumAcct').className = 'summary-value acct';
+    document.getElementById('sumDow').className = 'summary-value dow';
+    document.getElementById('sumWeeks').textContent = '0';
+    document.getElementById('sumSince').textContent = 'no data yet';
+    document.getElementById('sumAlphaSub').textContent = 'the headline result';
+  }
+
+  renderChart(rows);
+  renderRisk(rows);
+}
+
+function renderChart(rows) {
+  const wrap = document.getElementById('chartWrap');
+  if (rows.length < 2) {
+    wrap.innerHTML = '<div class="chart-empty">Add at least two weeks of data to see the performance chart.</div>';
+    return;
+  }
+
+  const W = 800, H = 360, padL = 52, padR = 20, padT = 20, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const acctVals = rows.map(r => r.acctRet);
+  const dowVals  = rows.map(r => r.dowRet);
+  const all = [...acctVals, ...dowVals, 0];
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (hi - lo < 1) { hi += 1; lo -= 1; }       // avoid flat range
+  const padRange = (hi - lo) * 0.12;
+  lo -= padRange; hi += padRange;
+
+  const n = rows.length;
+  const x = i => padL + (n === 1 ? 0 : (i / (n - 1)) * plotW);
+  const y = v => padT + (1 - (v - lo) / (hi - lo)) * plotH;
+
+  // Gridlines / Y ticks (5 ticks)
+  let grid = '';
+  const ticks = 5;
+  for (let t = 0; t <= ticks; t++) {
+    const val = lo + (hi - lo) * (t / ticks);
+    const yy = y(val);
+    const isZero = Math.abs(val) < 0.01;
+    grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"
+      stroke="${isZero ? 'var(--ink-dim)' : 'var(--rule)'}" stroke-width="${isZero ? 1 : 0.5}"
+      ${isZero ? '' : 'stroke-dasharray="2,3"'} />`;
+    grid += `<text x="${padL - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--ink-dim)" font-family="monospace">${val >= 0 ? '+' : ''}${val.toFixed(1)}%</text>`;
+  }
+
+  // X labels: first, middle, last dates
+  let xlabels = '';
+  const idxs = n <= 4 ? rows.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
+  for (const i of idxs) {
+    xlabels += `<text x="${x(i).toFixed(1)}" y="${H - 12}" text-anchor="middle" font-size="8" fill="var(--ink-dim)" font-family="monospace">${rows[i].date.slice(5)}</text>`;
+  }
+
+  const linePath = vals => vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const dots = (vals, color) => vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.5" fill="${color}" />`).join('');
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      ${grid}
+      <path d="${linePath(dowVals)}" fill="none" stroke="var(--dow)" stroke-width="2" />
+      <path d="${linePath(acctVals)}" fill="none" stroke="var(--acct-bright)" stroke-width="2" />
+      ${dots(dowVals, 'var(--dow)')}
+      ${dots(acctVals, 'var(--acct-bright)')}
+      ${xlabels}
+    </svg>`;
+}
+
+// ── Export / restore ───────────────────────────────────────────────────────
+function exportJSON() {
+  const rows = computed();
+  const last = rows.length ? rows[rows.length - 1] : null;
+  const m = riskMetrics(rows);
+  const round = (v, d) => (v === null || v === undefined || isNaN(v)) ? null : +v.toFixed(d);
+  const record = {
+    exported: new Date().toISOString(),
+    project: 'Furton Research — Committee vs Dow',
+    weeks_tracked: rows.length,
+    baseline_date: rows.length ? rows[0].date : null,
+    risk_free_annual_pct: RISK_FREE_ANNUAL * 100,
+    dividends_received_total: +rows.reduce((s, r) => s + (r.div || 0), 0).toFixed(2),
+    latest: last && rows.length > 1 ? { committee_return_pct: +last.acctRet.toFixed(2), dow_return_pct: +last.dowRet.toFixed(2), alpha_pct: +last.alpha.toFixed(2) } : null,
+    risk_metrics: {
+      sharpe_ratio:           round(m.sharpe, 2),
+      annualized_volatility_pct: round(m.vol, 2),
+      max_drawdown_pct:       round(m.maxDD, 2),
+      information_ratio:      round(m.infoRatio, 2),
+      tracking_error_pct:     round(m.trackingError, 2),
+      periods_per_year:       round(m.periodsPerYear, 1),
+      drawdown_override: {
+        rule: `Trails Dow by >= ${DD_OVERRIDE_VS_DOW} pts`,
+        current_alpha_pct: round(m.alpha, 2),
+        triggered: m.ddFlag === 'tripped',
+      },
+    },
+    entries: rows.map(r => ({ date: r.date, account_value: r.acct, dow_level: r.dow, dividends: r.div || 0,
+      committee_return_pct: +r.acctRet.toFixed(3), dow_return_pct: +r.dowRet.toFixed(3), alpha_pct: +r.alpha.toFixed(3) })),
+  };
+  downloadFile(JSON.stringify(record, null, 2), `furton_performance_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+}
+
+function exportCSV() {
+  const rows = computed();
+  let csv = 'date,account_value,dow_level,dividends,committee_return_pct,dow_return_pct,alpha_pct\n';
+  csv += rows.map(r => `${r.date},${r.acct},${r.dow},${r.div || 0},${r.acctRet.toFixed(3)},${r.dowRet.toFixed(3)},${r.alpha.toFixed(3)}`).join('\n');
+  downloadFile(csv, `furton_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+}
+
+function downloadFile(content, name, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function restore(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const src = data.entries;
+      if (!Array.isArray(src)) { showToast('✗ Not a performance backup file.', false); event.target.value = ''; return; }
+      if (entries.length > 0 && !confirm(`Replace your current ${entries.length} week(s) with the ${src.length} from this backup?`)) { event.target.value = ''; return; }
+      entries = src.map(r => ({ date: r.date, acct: r.account_value ?? r.acct, dow: r.dow_level ?? r.dow, div: r.dividends ?? r.div ?? 0 }))
+                   .filter(r => r.date && r.acct > 0 && r.dow > 0);
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      save(); render();
+      showToast(`✓ Restored ${entries.length} week(s).`);
+    } catch (err) { showToast('✗ Could not read that file: ' + err.message, false); }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+async function clearAll() {
+  if (!confirm('Delete all performance data? This cannot be undone.')) return;
+  entries = []; await save(); render();
+}
+
+function showToast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = ok ? 'var(--acct)' : 'var(--loss)';
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+load();
+</script>
+</body>
+</html>
