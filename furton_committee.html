@@ -27,8 +27,8 @@
 
     --buy:        #2D6A2D;
     --pass:       #6A6050;
-    --short:      #8B1A1A;
     --abstain:    #8B6A1A;
+    --short:      #8B1A1A;   /* negative/sell/error red (committee is long-only — no short verdicts) */
 
     --mono:   'Courier Prime', monospace;
     --serif:  'Playfair Display', serif;
@@ -109,7 +109,6 @@
   .sr-position { font-family: var(--serif); font-weight: 700; font-size: 14px; }
   .sr-position.BUY { color: var(--buy); }
   .sr-position.PASS { color: var(--pass); }
-  .sr-position.SHORT { color: var(--short); }
   .sr-score { font-size: 12px; }
   .sr-votes { display: flex; gap: 3px; align-items: center; }
   .sr-vote-dot { width: 14px; height: 14px; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: var(--paper); font-weight: 700; }
@@ -315,7 +314,6 @@
   }
   .verdict-badge.BUY     { color: var(--buy); }
   .verdict-badge.PASS    { color: var(--pass); }
-  .verdict-badge.SHORT   { color: var(--short); }
   .verdict-badge.ABSTAIN { color: var(--abstain); }
   .verdict-badge.pending { color: var(--rule-mid); font-size: 11px; font-family: var(--mono); font-weight: 400; font-style: italic; }
 
@@ -366,7 +364,6 @@
   .committee-position-badge { font-family: var(--serif); font-size: 36px; font-weight: 700; line-height: 1; }
   .committee-position-badge.BUY   { color: var(--buy); }
   .committee-position-badge.PASS  { color: var(--pass); }
-  .committee-position-badge.SHORT { color: var(--short); }
   .committee-position-badge.TBD   { color: var(--rule-mid); }
 
   .committee-score-wrap { display: flex; flex-direction: column; gap: 6px; }
@@ -1283,8 +1280,8 @@ function renderScreenerTable() {
     for (const inv of ['Warren Buffett','Howard Marks','Joel Greenblatt','Cathie Wood','Leopold Aschenbrenner']) {
       const v = verdicts?.find(x => x.investor === inv);
       if (!v) { votesHtml += '<div class="sr-vote-dot" style="background:var(--rule-mid);opacity:0.3;"></div>'; continue; }
-      const c = v.position === 'BUY' ? 'var(--buy)' : v.position === 'SHORT' ? 'var(--short)' : v.position === 'ABSTAIN' ? 'var(--abstain)' : 'var(--pass)';
-      const letter = v.position === 'BUY' ? '↑' : v.position === 'SHORT' ? '↓' : v.position === 'ABSTAIN' ? '–' : '=';
+      const c = v.position === 'BUY' ? 'var(--buy)' : v.position === 'ABSTAIN' ? 'var(--abstain)' : 'var(--pass)';
+      const letter = v.position === 'BUY' ? '↑' : v.position === 'ABSTAIN' ? '–' : '=';
       votesHtml += `<div class="sr-vote-dot" style="background:${c};" title="${inv}: ${v.position} (${v.conviction})">${letter}</div>`;
     }
 

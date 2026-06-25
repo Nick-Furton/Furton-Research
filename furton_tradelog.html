@@ -19,10 +19,10 @@
     --rule-mid:   #333328;
     --buy:        #2D6A2D;
     --pass:       #6A6050;
-    --short:      #8B1A1A;
     --gain:       #3E8B3E;
     --loss:       #B5341A;
     --amber:      #8B6A1A;
+    --short:      #8B1A1A;   /* negative/sell/error red (portfolio is long-only — no short trades) */
     --mono:   'Courier Prime', monospace;
     --serif:  'Playfair Display', serif;
   }
@@ -104,7 +104,6 @@
   .h-name { font-size: 9px; color: var(--ink-dim); }
   .h-pos { font-size: 9px; padding: 2px 6px; border: 1px solid; letter-spacing: 0.06em; text-transform: uppercase; }
   .h-pos.BUY { color: var(--buy); border-color: var(--buy); }
-  .h-pos.SHORT { color: var(--short); border-color: var(--short); }
   .pl-cell { font-family: var(--serif); font-size: 14px; }
   .pl-cell.gain { color: var(--gain); }
   .pl-cell.loss { color: var(--loss); }
@@ -270,7 +269,6 @@
       <label>Position</label>
       <select id="inPosition">
         <option value="BUY">BUY</option>
-        <option value="SHORT">SHORT</option>
       </select>
     </div>
     <div class="field">
@@ -837,7 +835,7 @@ function positionValue(t) {
 function positionPL(t) {
   if (t.fillPrice <= 0 || t.shares <= 0) return 0;
   const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
-  const dir = t.position === 'SHORT' ? -1 : 1;
+  const dir = 1;  // long-only
   return dir * (px - t.fillPrice) * t.shares;
 }
 
@@ -859,7 +857,7 @@ function render() {
       // Execution slippage: fill price vs decision-time reference price.
       const hasSlip = t.refPrice > 0 && t.fillPrice > 0;
       const slipPct = hasSlip ? (t.fillPrice - t.refPrice) / t.refPrice * 100 : 0;
-      const slipAdverse = hasSlip && (t.position === 'SHORT' ? slipPct < 0 : slipPct > 0);
+      const slipAdverse = hasSlip && slipPct > 0;
       const slipHtml = hasSlip
         ? `<div class="slippage" style="color:${slipAdverse ? 'var(--loss)' : 'var(--ink-dim)'}">slip ${slipPct >= 0 ? '+' : ''}${slipPct.toFixed(2)}%</div>`
         : '';

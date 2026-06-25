@@ -94,9 +94,8 @@ MARKS_LIBRARY         = Path.home() / "marks_library"                       / "m
 GREENBLATT_LIBRARY    = Path.home() / "greenblatt_library"                  / "manifest.json"
 WOOD_LIBRARY          = Path.home() / "wood_library"                        / "manifest.json"
 
-# Committee weighted vote thresholds
+# Committee weighted vote threshold (long-only — committee verdict is Buy or Pass)
 BUY_THRESHOLD   =  0.3
-SHORT_THRESHOLD = -0.3
 
 # ── Dow 30 constituents (June 2026) ────────────────────────────────────────────
 # ai_relevant flags whether Aschenbrenner should be auto-included.
@@ -418,7 +417,7 @@ WILL NOT DO: Invest in negative owner earnings, chase fashion, invest in gold/cr
 VOICE: Plain American English, everyday commerce analogies, reference letter years explicitly. Never use "alpha," "beta," or "risk-adjusted returns."
 
 OUTPUT FORMAT — use exactly:
-POSITION: [BUY / PASS / SHORT]
+POSITION: [BUY / PASS]
 CONVICTION: [1-10]
 THESIS: [100-200 words in Buffett's voice]""",
 
@@ -431,7 +430,7 @@ EXPANDED DOMAIN: You evaluate any company where AI creates a material investment
 VOICE: Intellectually intense, specific, numerical. Cite "Situational Awareness" chapters. Distinguish high-conviction claims from extrapolations. Flag uncertainty explicitly. When engaging on AI-adjacent companies, assess specifically: how much of their moat depends on AI leadership, and how exposed are they to being disrupted by the next capability jump.
 
 OUTPUT FORMAT — use exactly:
-POSITION: [BUY / PASS / SHORT / ABSTAIN]
+POSITION: [BUY / PASS / ABSTAIN]
 CONVICTION: [1-10, or 0 if ABSTAIN]
 AI EXPOSURE: [High / Medium / Low / None] — [one sentence on AI relevance]
 THESIS: [100-200 words in Aschenbrenner's voice, with domain caveat if ABSTAIN]""",
@@ -445,7 +444,7 @@ WILL NOT DO: Confident macro predictions, invest heavily in late-cycle regardles
 VOICE: Essayistic, teacherly. Use rhetorical questions. Reference memo titles explicitly. Use "the question isn't whether X is true, but whether X is in the price."
 
 OUTPUT FORMAT — use exactly:
-POSITION: [BUY / PASS / SHORT]
+POSITION: [BUY / PASS]
 CONVICTION: [1-10]
 CYCLE ASSESSMENT: [1-10] — [one sentence]
 THESIS: [100-200 words in Marks's voice with second-level thinking and cycle context]""",
@@ -457,7 +456,7 @@ CORE FRAMEWORKS: (1) Magic Formula — rank by Return on Capital (EBIT/Net Worki
 VOICE: Plain, self-deprecating, often funny. Use gum shop and Jason analogies. Reference books explicitly. Explain from first principles, avoid jargon.
 
 OUTPUT FORMAT — use exactly:
-POSITION: [BUY / PASS / SHORT]
+POSITION: [BUY / PASS]
 CONVICTION: [1-10]
 RETURN ON CAPITAL: [High / Average / Low / Unknown]
 EARNINGS YIELD: [Attractive / Fair / Expensive / Unknown]
@@ -473,7 +472,7 @@ WILL NOT DO: Invest in market defenders not market creators, use P/E for growth-
 VOICE: Genuine optimism and conviction. Reference Wright's Law with specific cost decline numbers. Cite Big Ideas reports. Speak in five-year horizons. Engage critics by noting their timeframe is shorter than yours.
 
 OUTPUT FORMAT — use exactly:
-POSITION: [BUY / PASS / SHORT]
+POSITION: [BUY / PASS]
 CONVICTION: [1-10]
 PLATFORMS: [which of five platforms are relevant]
 SCENARIOS: Bear [outcome] ([prob]%) / Base [outcome] ([prob]%) / Bull [outcome] ([prob]%)
@@ -484,21 +483,13 @@ INVESTORS = list(INVESTOR_SYSTEMS.keys())
 
 # ── Shared blind-evaluation prompt ──────────────────────────────────────────────
 # Used by every blind-vote path (real-time committee, screener, and batch) so the
-# instruction stays identical across them. The downside paragraph corrects a
-# PASS-default bias: framed only as a buy decision, members recorded everything
-# unattractive as PASS and never SHORT. It invites a Short verdict where the
-# investor's own documented philosophy permits one (Marks, Greenblatt, and
-# Aschenbrenner can short; Buffett and Wood do not, and should still PASS) — it
-# does not force shorts. The portfolio remains long-only; Short verdicts are
-# recorded for analysis only.
+# instruction stays identical across them. The committee is long-only: each member
+# votes BUY or PASS (Aschenbrenner may also ABSTAIN on names with no AI angle). A
+# security a member finds unattractive is a low-conviction PASS — there is no short
+# verdict, consistent with the long-only philosophies the committee comprises.
 EVAL_USER_PROMPT = (
     "Please evaluate the following investment opportunity and respond "
     "in exactly the format specified in your instructions.\n\n"
-    "Judge both directions. If the security is genuinely overvalued or "
-    "structurally deteriorating AND your documented philosophy permits short "
-    "positions, a SHORT verdict is the correct call — do not default to PASS when "
-    "you hold real downside conviction. If your philosophy precludes shorting, a "
-    "PASS with your reasoning remains correct.\n\n"
     "INVESTMENT BRIEF:\n{brief}"
 )
 
@@ -521,7 +512,7 @@ def calculate_committee_vote(verdicts):
             breakdown.append({**v, "weighted": 0, "included": False})
             continue
 
-        direction = 1 if pos == "BUY" else (-1 if pos == "SHORT" else 0)
+        direction = 1 if pos == "BUY" else 0
         weighted  = direction * conv
         score_sum  += weighted
         weight_sum += conv
@@ -534,8 +525,6 @@ def calculate_committee_vote(verdicts):
 
     if normalized >= BUY_THRESHOLD:
         committee_position = "BUY"
-    elif normalized <= SHORT_THRESHOLD:
-        committee_position = "SHORT"
     else:
         committee_position = "PASS"
 
@@ -551,20 +540,19 @@ def calculate_committee_vote(verdicts):
 # Stage 2 (deliberation + Opus) only runs on stocks where the blind vote
 # shows a meaningful signal. This roughly halves cost by skipping deliberation
 # on the many stocks that get a unanimous lukewarm PASS.
-ADVANCE_SCORE_THRESHOLD = 0.25  # |committee score| at/above this = clear signal.
-                                # Set just BELOW the ±0.3 committee Buy/Short line
-                                # (BUY_THRESHOLD) so near-miss names — the ones a
-                                # deliberation round could actually tip across the
-                                # line — always advance, while genuinely indifferent
-                                # all-PASS names (score 0) still skip.
+ADVANCE_SCORE_THRESHOLD = 0.2   # committee score at/above this = clear enough
+                                # signal to deliberate. Set below the +0.3 committee
+                                # Buy line (BUY_THRESHOLD) so near-miss names — the
+                                # ones a deliberation round could actually tip across
+                                # the line — advance, while genuinely indifferent
+                                # all-PASS names (score near 0) still skip.
 ADVANCE_CONVICTION_HIGH = 8     # any single investor this conviction = advance
 
 def should_deliberate(verdicts, vote):
     """
     Returns (advances: bool, reason: str).
     A stock advances to deliberation if the committee shows a real signal:
-      - strong directional score, OR
-      - genuine disagreement (at least one BUY and one SHORT), OR
+      - committee score at or above ADVANCE_SCORE_THRESHOLD, OR
       - at least one high-conviction individual voice.
     Otherwise deliberation is skipped as all-around low conviction.
     """
@@ -572,15 +560,11 @@ def should_deliberate(verdicts, vote):
     if not active:
         return False, "all members abstained"
 
-    score    = abs(vote.get("score", 0))
+    score    = vote.get("score", 0)
     max_conv = max((v.get("conviction", 0) for v in active), default=0)
-    has_buy   = any(v["position"] == "BUY"   for v in active)
-    has_short = any(v["position"] == "SHORT" for v in active)
 
     if score >= ADVANCE_SCORE_THRESHOLD:
-        return True, f"strong directional signal (score {vote.get('score')})"
-    if has_buy and has_short:
-        return True, "committee split — genuine disagreement to resolve"
+        return True, f"committee score {vote.get('score')} at/above {ADVANCE_SCORE_THRESHOLD}"
     if max_conv >= ADVANCE_CONVICTION_HIGH:
         return True, f"high individual conviction present ({max_conv}/10)"
 
@@ -943,7 +927,7 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
                         usage = data.get("usage", {})
 
                         # Parse structured output
-                        pos_match  = __import__("re").search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, __import__("re").I)
+                        pos_match  = __import__("re").search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, __import__("re").I)
                         conv_match = __import__("re").search(r"CONVICTION:\s*(\d+)", text, __import__("re").I)
 
                         results[investor_name] = {
@@ -1068,7 +1052,7 @@ INVESTMENT BRIEF (for reference):
 {brief[:1500]}
 
 Respond in exactly this format:
-POSITION: [BUY / PASS / SHORT / ABSTAIN — can be same as before]
+POSITION: [BUY / PASS / ABSTAIN — can be same as before]
 CONVICTION: [1-10 — revised if appropriate]
 RESPONSE TO COMMITTEE: [100-150 words engaging with the most significant disagreement, in your documented voice]"""
 
@@ -1090,7 +1074,7 @@ RESPONSE TO COMMITTEE: [100-150 words engaging with the most significant disagre
                         usage = data.get("usage", {})
 
                         import re
-                        pos_match   = re.search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, re.I)
+                        pos_match   = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
                         conv_match  = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
                         resp_match  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
 
@@ -1253,7 +1237,7 @@ Write the committee statement now. 150-250 words."""
                         text  = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
                         import re
-                        pos  = re.search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, re.I)
+                        pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
                         conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
                         results[investor_name] = {
                             "investor": investor_name,
@@ -1308,7 +1292,7 @@ INVESTMENT BRIEF (reference):
 {brief[:1500]}
 
 Respond exactly:
-POSITION: [BUY / PASS / SHORT / ABSTAIN]
+POSITION: [BUY / PASS / ABSTAIN]
 CONVICTION: [1-10]
 RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voice]"""
             payload = {
@@ -1322,7 +1306,7 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
                         data = json.loads(resp_bytes)
                         text = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
-                        pos  = re.search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, re.I)
+                        pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
                         conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
                         rsp  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
                         results[investor_name] = {
@@ -1453,10 +1437,11 @@ Write the statement now. 120-200 words."""
             statement = (
                 f"Deliberation round skipped due to all-around low conviction. "
                 f"The committee's blind vote was {vote['position']} "
-                f"(weighted score {vote['score']:+.2f}) with no individual conviction "
-                f"at or above {ADVANCE_CONVICTION_HIGH}/10 and no directional disagreement "
-                f"between members. No deliberation or committee statement was generated "
-                f"for this stock to conserve cost."
+                f"(weighted score {vote['score']:+.2f}), below the "
+                f"{ADVANCE_SCORE_THRESHOLD} deliberation threshold and with no "
+                f"individual conviction at or above {ADVANCE_CONVICTION_HIGH}/10. "
+                f"No deliberation or committee statement was generated for this "
+                f"stock to conserve cost."
             )
         elif run_synth:
             statement, synth_usage = self._run_synthesis(ticker, brief, blind_verdicts,
@@ -1660,7 +1645,7 @@ Write the statement now. 120-200 words."""
                 if not entry or not entry.get("text"):
                     continue
                 text = entry["text"]
-                pos  = re.search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, re.I)
+                pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
                 conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
                 verdicts.append({
                     "investor": investor,
@@ -1749,7 +1734,7 @@ INVESTMENT BRIEF (reference):
 {brief[:1500]}
 
 Respond exactly:
-POSITION: [BUY / PASS / SHORT / ABSTAIN]
+POSITION: [BUY / PASS / ABSTAIN]
 CONVICTION: [1-10]
 RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voice]"""
                 requests_list.append({
@@ -1809,7 +1794,7 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
                         })
                     continue
                 text = entry["text"]
-                pos  = re.search(r"POSITION:\s*(BUY|PASS|SHORT|ABSTAIN)", text, re.I)
+                pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
                 conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
                 rsp  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
                 delib.append({
