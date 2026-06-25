@@ -1033,7 +1033,12 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
             return
         brief, _usage = enrich(query)
         if brief:
-            self.send_json(200, {"brief": brief, "query": query})
+            ref_price, ref_asof = parse_reference_price(brief)
+            self.send_json(200, {
+                "brief": brief, "query": query,
+                "reference_price": ref_price,
+                "reference_price_asof": ref_asof,
+            })
         else:
             self.send_json(503, {"error": "Enrichment failed", "query": query})
 

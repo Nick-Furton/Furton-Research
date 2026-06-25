@@ -1395,6 +1395,8 @@ function exportScreener() {
       ticker: p.ticker, name: p.name,
       weight_pct: +(p.weight * 100).toFixed(2),
       committee_score: p.score,
+      reference_price: p.reference_price ?? null,            // decision-time advisory price → trade log auto-fills refPrice
+      reference_price_asof: p.reference_price_asof ?? null,
     })),
     rankings: completed.map((r, i) => ({
       rank: i + 1, ticker: r.ticker, name: r.name,
@@ -1476,6 +1478,8 @@ function computePortfolio() {
     weight: cappedWeights[i],
     capped: rawWeights[i] > CONCENTRATION_CAP + 1e-9,
     color: PIE_COLORS[i % PIE_COLORS.length],
+    reference_price: r.reference_price ?? null,            // decision-time advisory price (server-captured)
+    reference_price_asof: r.reference_price_asof ?? null,
   }));
 }
 
