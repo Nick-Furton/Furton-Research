@@ -19,6 +19,7 @@ Endpoints:
 
 import json
 import os
+import re
 import http.server
 import urllib.request
 import urllib.error
@@ -196,7 +197,16 @@ class RAGStore:
         if model is None:
             return self._even_sample(top_k)
 
-        q = model.encode([brief], normalize_embeddings=True).astype(np.float32)[0]
+        # BUG 2.2 fix: embed the compact RETRIEVAL QUERY emitted by enrichment
+        # (or a bounded brief-head fallback), not the full brief — the embedder
+        # silently truncates to ~190 words, so the full brief's tail (risks,
+        # recent news) never influenced which passages were retrieved.
+        query_text = extract_retrieval_query(brief)
+        used_emitted = _RETRIEVAL_QUERY_RE.search(brief or "") is not None
+        print(f"  [RAG] {self.investor_name}: embedding "
+              f"{'RETRIEVAL QUERY' if used_emitted else 'brief-head fallback'} "
+              f"({len(query_text.split())}w): {query_text[:90]}")
+        q = model.encode([query_text], normalize_embeddings=True).astype(np.float32)[0]
         # Cosine similarity = dot product (vectors are normalized)
         sims = self.vectors @ q
         top_idx = np.argsort(-sims)[:top_k]
@@ -355,17 +365,27 @@ Cover: company overview, current valuation (price, market cap, P/E forward/trail
 
 Format as clean prose, not bullet points. Write for a sophisticated investor committee. Label each section clearly.
 
-CRITICAL OUTPUT RULE: Begin your response immediately with the brief itself, starting with the company name as a heading. Do NOT write any preamble, acknowledgment, or conversational introduction. Never begin with phrases like "Sure," "I'll gather," "Here is," "Let me," or "Certainly." The first words of your output must be the company name. Do NOT end with any closing remarks, offers to help further, or summary statements — end with the last substantive fact."""
+After the prose brief, append exactly three machine-readable lines, each on its own line and in this exact order, with nothing after them:
+REFERENCE_PRICE: <the most recent quoted share price you found, in USD, as a bare number with no currency symbol or thousands separators (e.g. 187.42); write Unknown if no price was found>
+REFERENCE_PRICE_ASOF: <the as-of date or date-time of that quoted price from your search, ISO format preferred (e.g. 2026-06-24); write Unknown if not determinable>
+RETRIEVAL QUERY: <a single dense line of at most 60 words — business description, sector, unit economics, and the key thesis and risk keywords — written to maximize semantic similarity against an investing-philosophy text corpus, not as prose>
+
+CRITICAL OUTPUT RULE: Begin your response immediately with the brief itself, starting with the company name as a heading. Do NOT write any preamble, acknowledgment, or conversational introduction. Never begin with phrases like "Sure," "I'll gather," "Here is," "Let me," or "Certainly." The first words of your output must be the company name. End with exactly the three machine-readable lines described above (REFERENCE_PRICE, REFERENCE_PRICE_ASOF, RETRIEVAL QUERY) and nothing after them — no closing remarks, offers to help, or summary statements."""
 
 def enrich(query):
     print(f"  [Enrich] {query}")
     payload = {
         "model": HAIKU_MODEL,
-        "max_tokens": 2000,
+        # 3500 (was 2000): the brief's prose alone runs ~1,400 output tokens and,
+        # with web-search tool blocks counted against the same budget, a 2000-token
+        # cap stopped Haiku mid-news (stop_reason=max_tokens) — so the brief was
+        # truncated AND the machine-readable trailer (REFERENCE_PRICE / RETRIEVAL
+        # QUERY, emitted last) never appeared. Extra Haiku output tokens are cheap.
+        "max_tokens": 3500,
         "temperature": TEMPERATURE,
         "system": ENRICH_SYSTEM,
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
-        "messages": [{"role": "user", "content": f"Research and produce a full investment brief for: {query}. Search for current price, recent earnings, valuation multiples, competitive position, and material recent news. Today is June 2026. Begin immediately with the company name — no preamble."}]
+        "messages": [{"role": "user", "content": f"Research and produce a full investment brief for: {query}. Search for current price, recent earnings, valuation multiples, competitive position, and material recent news. Today is June 2026. Begin immediately with the company name — no preamble. End with the REFERENCE_PRICE, REFERENCE_PRICE_ASOF, and RETRIEVAL QUERY lines exactly as instructed."}]
     }
     resp_bytes, status = call_anthropic(payload, timeout=60)
     if status != 200:
@@ -404,6 +424,62 @@ def strip_preamble(text):
         if cleaned == original:
             break
     return cleaned.strip()
+
+# ── Enrichment trailer parsing (RETRIEVAL QUERY / REFERENCE_PRICE) ───────────────
+# Every brief ends with three machine-readable lines (see ENRICH_SYSTEM). We parse
+# them here. The RETRIEVAL QUERY drives RAG retrieval (BUG 2.2 — embed a focused
+# query, not the full brief which the embedder silently truncates to its ~190-word
+# window so retrieval only ever saw the brief's opening). REFERENCE_PRICE / _ASOF
+# give a decision-time advisory price captured at screen time (GAP 1.6).
+import re as _re
+
+# Tolerant of optional markdown emphasis (**LABEL:**) around the label/colon.
+_RETRIEVAL_QUERY_RE = _re.compile(
+    r"RETRIEVAL\s+QUERY\s*:\s*\**\s*(.+?)\s*\**\s*$", _re.IGNORECASE | _re.MULTILINE)
+_REFERENCE_PRICE_RE = _re.compile(
+    r"REFERENCE_PRICE\s*:\s*\**\s*\$?\s*([0-9][0-9,]*\.?[0-9]*)", _re.IGNORECASE)
+_REFERENCE_ASOF_RE = _re.compile(
+    r"REFERENCE_PRICE_ASOF\s*:\s*\**\s*(.+?)\s*\**\s*$", _re.IGNORECASE | _re.MULTILINE)
+
+_UNKNOWN_VALUES = {"unknown", "n/a", "na", "none", "null", "-", "tbd", ""}
+
+def extract_retrieval_query(brief, fallback_words=180):
+    """Return the compact RETRIEVAL QUERY emitted by enrichment, or fall back to
+    the first ~fallback_words of the brief if the line is missing/blank. This is
+    what RAG embeds, so retrieval keys off a dense thesis/risk summary rather than
+    only the brief's truncated opening (BUG 2.2). Never raises."""
+    if not brief:
+        return ""
+    m = _RETRIEVAL_QUERY_RE.search(brief)
+    if m:
+        q = m.group(1).strip().strip("<>").strip()
+        if q and q.lower() not in _UNKNOWN_VALUES:
+            return q
+    return " ".join(brief.split()[:fallback_words])
+
+def parse_reference_price(brief):
+    """Extract the advisory decision-time price + as-of timestamp from the brief
+    trailer (GAP 1.6). Returns (price_float_or_None, asof_str_or_None). The price
+    is a web-search snapshot — possibly stale or end-of-day — so it is advisory
+    only. Never raises and never blocks a screen: missing/garbled → None."""
+    if not brief:
+        return None, None
+    price = None
+    m = _REFERENCE_PRICE_RE.search(brief)
+    if m:
+        try:
+            price = float(m.group(1).replace(",", ""))
+        except ValueError:
+            price = None
+        if price is not None and price <= 0:
+            price = None
+    asof = None
+    m2 = _REFERENCE_ASOF_RE.search(brief)
+    if m2:
+        val = m2.group(1).strip().strip("<>").strip()
+        if val.lower() not in _UNKNOWN_VALUES:
+            asof = val
+    return price, asof
 
 # ── Investor system prompts ────────────────────────────────────────────────────
 
@@ -493,6 +569,102 @@ EVAL_USER_PROMPT = (
     "INVESTMENT BRIEF:\n{brief}"
 )
 
+# ── Structured-verdict parsing (fail loud, not silent) ──────────────────────────
+# Members are asked to answer with `POSITION:` / `CONVICTION:` lines, but the model
+# routinely wraps those in markdown — `**POSITION:** BUY`, `Position - Buy`,
+# `POSITION: **BUY** (conviction 9/10)`. The original `POSITION:\s*(BUY|PASS|ABSTAIN)`
+# missed every one of those and the caller then defaulted to PASS / conviction 5 —
+# silently recording a real Buy as a middling Pass and poisoning the vote
+# denominator. These tolerant patterns absorb markdown (* _ ` ~), an optional colon
+# or dash separator, and surrounding whitespace between the label and its value.
+_VERDICT_NOISE = r"[\*_`~ \t]*"          # markdown / spacing around label & value
+_VERDICT_SEP   = r"[:\-–—]?"   # optional ':' or '-'/en-dash/em-dash
+
+POSITION_RE   = re.compile(
+    r"POSITION" + _VERDICT_NOISE + _VERDICT_SEP + _VERDICT_NOISE +
+    r"(BUY|PASS|ABSTAIN)", re.I)
+CONVICTION_RE = re.compile(
+    r"CONVICTION" + _VERDICT_NOISE + _VERDICT_SEP + _VERDICT_NOISE +
+    r"(\d{1,2})", re.I)
+
+
+def parse_verdict(text):
+    """Parse a member's POSITION / CONVICTION out of free-form model output.
+
+    Returns (position, conviction, error):
+      - position   : 'BUY' | 'PASS' | 'ABSTAIN', or None if unparseable
+      - conviction : int 0–10, or None if unparseable/out-of-range
+      - error      : None on full success, else a short human-readable reason
+
+    An ABSTAIN with no conviction line is treated as conviction 0 (the documented
+    convention), not a failure. Callers MUST check `error` and fail loud — never
+    fabricate a PASS/5 on failure.
+    """
+    text = text or ""
+    pos_m  = POSITION_RE.search(text)
+    conv_m = CONVICTION_RE.search(text)
+
+    position = pos_m.group(1).upper() if pos_m else None
+
+    conviction = None
+    if conv_m:
+        n = int(conv_m.group(1))
+        if 0 <= n <= 10:
+            conviction = n
+
+    # ABSTAIN legitimately carries no conviction; normalize to 0.
+    if position == "ABSTAIN" and conviction is None:
+        conviction = 0
+
+    problems = []
+    if position is None:
+        problems.append("position unparseable")
+    if conviction is None:
+        problems.append("conviction unparseable")
+
+    return position, conviction, ("; ".join(problems) if problems else None)
+
+
+# ── Committee quorum ────────────────────────────────────────────────────────────
+# A committee verdict is only authoritative if enough members actually returned a
+# parseable vote. Members that error, time out, or fail to parse are NOT silently
+# dropped to make a clean-looking panel: we record who is missing, mark the panel
+# incomplete, and refuse to present a BUY off a half panel (the portfolio panel
+# would otherwise size a real position on 3 of 5 voices).
+#
+# Rule (MIN_QUORUM): a full panel (>=4 active) may be missing at most one member —
+# need active_count - 1, floored at 3. Smaller panels require everyone.
+def committee_quorum(active_count):
+    """Minimum number of parseable verdicts for an authoritative panel."""
+    if active_count >= 4:
+        return max(3, active_count - 1)
+    return active_count
+
+
+def apply_quorum(vote, verdicts, active_investors, missing_members):
+    """Annotate `vote` with panel-completeness info and gate the BUY.
+
+    Adds responded / active_count / missing_members / panel_complete / quorum_met.
+    If quorum is not met, a would-be BUY is downgraded to 'INCOMPLETE' so no
+    downstream consumer sizes a position on a partial committee. A partial PASS is
+    left as PASS (nothing is bought either way).
+    """
+    active_count = len(active_investors)
+    responded    = len(verdicts)
+    required     = committee_quorum(active_count)
+    quorum_met   = responded >= required
+
+    vote["responded"]       = responded
+    vote["active_count"]    = active_count
+    vote["missing_members"] = missing_members
+    vote["panel_complete"]  = (len(missing_members) == 0)
+    vote["quorum_met"]      = quorum_met
+
+    if not quorum_met and vote.get("position") == "BUY":
+        vote["position"] = "INCOMPLETE"
+    return vote
+
+
 # ── Weighted vote calculation ──────────────────────────────────────────────────
 
 def calculate_committee_vote(verdicts):
@@ -560,13 +732,17 @@ def should_deliberate(verdicts, vote):
     if not active:
         return False, "all members abstained"
 
-    score    = vote.get("score", 0)
-    max_conv = max((v.get("conviction", 0) for v in active), default=0)
+    score = vote.get("score", 0)
+    # Conviction only advances the stock when it sits behind a BUY. A strong PASS
+    # (conv 9 against the name) used to trigger an expensive deliberation round on
+    # a stock that can never be bought — gauge conviction over BUY voices only.
+    max_buy_conv = max((v.get("conviction", 0) or 0
+                        for v in active if v.get("position") == "BUY"), default=0)
 
     if score >= ADVANCE_SCORE_THRESHOLD:
         return True, f"committee score {vote.get('score')} at/above {ADVANCE_SCORE_THRESHOLD}"
-    if max_conv >= ADVANCE_CONVICTION_HIGH:
-        return True, f"high individual conviction present ({max_conv}/10)"
+    if max_buy_conv >= ADVANCE_CONVICTION_HIGH:
+        return True, f"high Buy conviction present ({max_buy_conv}/10)"
 
     return False, "all-around low conviction"
 
@@ -709,15 +885,25 @@ CODE_INVESTOR = {v: k for k, v in INVESTOR_CODE.items()}
 
 # ── Weekly committee-record archive (data-capture obligation §7.3) ──────────────
 
-def archive_screen(ticker, entry):
+def archive_screen(ticker, entry, new_run=True):
     """Merge one stock's committee record into screens/screen_YYYY-MM-DD.json.
 
     Append-only by screen date: the first stock screened on a given day creates
-    the file; later stocks add their own keyed entry; re-screening the same
-    ticker the same day merges into (updates) its existing entry rather than
-    duplicating it. Persists the blind verdicts + deliberation verdicts + vote +
-    statement that the API otherwise discards, so deliberation flip-rate and
-    blind-vs-final analysis can be reconstructed later.
+    the file; later stocks add their own keyed entry. Persists the blind verdicts
+    + deliberation verdicts + vote + statement that the API otherwise discards, so
+    deliberation flip-rate and blind-vs-final analysis can be reconstructed later.
+
+    Same-day re-runs are PRESERVED, not clobbered (needed for the §7.2 repeated-run
+    stability check). The ticker's top-level fields always reflect the latest run;
+    every earlier completed run is pushed onto a per-ticker `runs` list.
+
+    `new_run` controls merge vs. history:
+      - new_run=True  (a fresh blind evaluation — screener_stock, batch_blind):
+        if a record already exists for this ticker today, the existing record is
+        archived into `runs` before the new run replaces the top-level view.
+      - new_run=False (a continuation that fills in the *same* run — e.g. the
+        batch deliberation half merging onto its blind half): the entry is merged
+        into the current top-level record without starting a new run.
 
     Writes are serialized and atomic (temp file + replace) so concurrent stock
     threads can't corrupt the file. Failures are logged but never break a screen.
@@ -734,15 +920,32 @@ def archive_screen(ticker, entry):
                     data = json.load(f)
             else:
                 data = {"date": date_str, "temperature": TEMPERATURE, "stocks": {}}
-            existing = data["stocks"].get(ticker, {})
-            existing.update(entry)
-            existing["archived_at"] = datetime.datetime.now().isoformat(timespec="seconds")
-            data["stocks"][ticker] = existing
+
+            existing = data["stocks"].get(ticker)
+            if existing and new_run and (existing.keys() - {"runs", "archived_at"}):
+                # A populated record already exists for today and this is a brand
+                # new run — preserve the old run before overwriting the top-level
+                # view. `runs` holds every earlier completed run (newest last).
+                history = existing.pop("runs", [])
+                history.append(existing)
+                current = {"runs": history}
+            elif existing:
+                current = existing          # merge / continuation
+            else:
+                current = {"runs": []}       # first run for this ticker today
+
+            current.update(entry)
+            current["archived_at"] = datetime.datetime.now().isoformat(timespec="seconds")
+            current.setdefault("runs", [])
+            data["stocks"][ticker] = current
+
             tmp = path.with_suffix(".json.tmp")
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             tmp.replace(path)
-        print(f"  📁 Archived {ticker} → screens/screen_{date_str}.json")
+        run_count = len(data["stocks"][ticker].get("runs", [])) + 1
+        suffix = f" (run {run_count})" if run_count > 1 else ""
+        print(f"  📁 Archived {ticker}{suffix} → screens/screen_{date_str}.json")
         return True
     except Exception as e:
         print(f"  ⚠ Could not archive screen for {ticker}: {e}")
@@ -873,7 +1076,7 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
                 usage = data.get("usage", {})
                 inp   = usage.get("input_tokens", 0)
                 out   = usage.get("output_tokens", 0)
-                print(f"  Tokens: {inp:,}/{out:,} (≈${inp*0.000003+out*0.000015:.4f})")
+                print(f"  Tokens: {inp:,}/{out:,} (≈${stage_cost(payload.get('model', SONNET_MODEL), inp, out):.4f})")
             except Exception:
                 pass
 
@@ -926,14 +1129,14 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
                         text  = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
 
-                        # Parse structured output
-                        pos_match  = __import__("re").search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, __import__("re").I)
-                        conv_match = __import__("re").search(r"CONVICTION:\s*(\d+)", text, __import__("re").I)
+                        # Parse structured output — fail loud, never invent a PASS-5
+                        position, conviction, perr = parse_verdict(text)
 
                         results[investor_name] = {
                             "investor":   investor_name,
-                            "position":   pos_match.group(1).upper()  if pos_match  else "PASS",
-                            "conviction": int(conv_match.group(1))     if conv_match else 5,
+                            "position":   position,
+                            "conviction": conviction,
+                            "parse_error": perr,
                             "raw":        text,
                             "tokens":     (usage.get("input_tokens",0), usage.get("output_tokens",0)),
                             "cache_read": usage.get("cache_read_input_tokens", 0),
@@ -944,7 +1147,13 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
                             cache_str = f" [cache HIT: {usage['cache_read_input_tokens']:,} tokens saved]"
                         elif usage.get("cache_creation_input_tokens", 0) > 0:
                             cache_str = f" [cache WRITE: {usage['cache_creation_input_tokens']:,} tokens written]"
-                        print(f"  ✓ {investor_name}: {results[investor_name]['position']} ({results[investor_name]['conviction']}){cache_str}")
+                        if perr:
+                            # Surface the failure and exclude the member from the
+                            # vote (treated like an abstain) — do NOT fabricate a PASS.
+                            errors[investor_name] = f"parse-failure: {perr}"
+                            print(f"  ✗ {investor_name}: parse-failure ({perr}){cache_str}")
+                        else:
+                            print(f"  ✓ {investor_name}: {position} ({conviction}){cache_str}")
                     except Exception as e:
                         errors[investor_name] = str(e)
                         print(f"  ✗ {investor_name}: parse error {e}")
@@ -963,8 +1172,17 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
         for t in threads:
             t.join(timeout=150)
 
-        verdicts = [results[name] for name in active_investors if name in results]
+        # Only cleanly-parsed members count toward the verdict; parse-failures and
+        # API errors are excluded (like abstains) but tracked below for quorum.
+        verdicts = [results[name] for name in active_investors
+                    if name in results and not results[name].get("parse_error")]
+        missing  = [name for name in active_investors
+                    if name not in results or results[name].get("parse_error")]
         vote     = calculate_committee_vote(verdicts)
+        apply_quorum(vote, verdicts, active_investors, missing)
+        if not vote["quorum_met"]:
+            print(f"  ⚠ Panel incomplete: {len(verdicts)}/{len(active_investors)} "
+                  f"voted; missing {missing} — BUY suppressed")
 
         total_in    = sum(r["tokens"][0] for r in results.values())
         total_out   = sum(r["tokens"][1] for r in results.values())
@@ -1073,20 +1291,23 @@ RESPONSE TO COMMITTEE: [100-150 words engaging with the most significant disagre
                         text  = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
 
-                        import re
-                        pos_match   = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
-                        conv_match  = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
+                        # Tolerant parse; on failure carry forward this member's own
+                        # blind verdict (their real prior vote — never a phantom PASS).
+                        d_pos, d_conv, d_perr = parse_verdict(text)
                         resp_match  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
 
                         results[investor_name] = {
                             "investor":   investor_name,
-                            "position":   pos_match.group(1).upper()    if pos_match  else my_verdict["position"],
-                            "conviction": int(conv_match.group(1))       if conv_match else my_verdict["conviction"],
+                            "position":   d_pos  if d_pos  is not None else my_verdict["position"],
+                            "conviction": d_conv if d_conv is not None else my_verdict["conviction"],
+                            "parse_error": d_perr,
                             "response":   resp_match.group(1).strip()    if resp_match else text,
                             "prev_position":   my_verdict["position"],
                             "prev_conviction": my_verdict["conviction"],
                             "tokens": (usage.get("input_tokens",0), usage.get("output_tokens",0))
                         }
+                        if d_perr:
+                            print(f"  ⚠ {investor_name}: deliberation parse-failure ({d_perr}) — blind verdict carried forward")
                         changed = results[investor_name]["conviction"] != my_verdict["conviction"]
                         print(f"  ✓ {investor_name}: {results[investor_name]['position']} ({results[investor_name]['conviction']}) {'↕' if changed else ''}")
                     except Exception as e:
@@ -1122,7 +1343,7 @@ RESPONSE TO COMMITTEE: [100-150 words engaging with the most significant disagre
         total_in  = sum(r["tokens"][0] for r in results.values())
         total_out = sum(r["tokens"][1] for r in results.values())
         print(f"  Final committee: {vote['position']} (score={vote['score']})")
-        print(f"  Deliberation tokens: {total_in:,}/{total_out:,} (≈${total_in*0.000003+total_out*0.000015:.4f})")
+        print(f"  Deliberation tokens: {total_in:,}/{total_out:,} (≈${stage_cost(SONNET_MODEL, total_in, total_out):.4f})")
 
         self.send_json(200, {
             "deliberation": deliberation_verdicts,
@@ -1197,7 +1418,7 @@ Write the committee statement now. 150-250 words."""
                 usage  = data.get("usage", {})
                 inp    = usage.get("input_tokens", 0)
                 out    = usage.get("output_tokens", 0)
-                print(f"  ✓ Opus synthesis complete ({inp:,}/{out:,} tokens, ≈${inp*0.000005+out*0.000025:.4f})")
+                print(f"  ✓ Opus synthesis complete ({inp:,}/{out:,} tokens, ≈${stage_cost(OPUS_MODEL, inp, out):.4f})")
                 self.send_json(200, {"statement": text, "tokens": {"input": inp, "output": out}})
             except Exception as e:
                 self.send_json(500, {"error": str(e)})
@@ -1236,13 +1457,16 @@ Write the committee statement now. 150-250 words."""
                         data  = json.loads(resp_bytes)
                         text  = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
-                        import re
-                        pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
-                        conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
+                        # Fail loud — a parse failure is recorded as such (kept for
+                        # cost accounting) but excluded from the vote, never PASS-5.
+                        position, conviction, perr = parse_verdict(text)
+                        if perr:
+                            print(f"    ✗ parse-failure {investor_name}: {perr}")
                         results[investor_name] = {
                             "investor": investor_name,
-                            "position": pos.group(1).upper() if pos else "PASS",
-                            "conviction": int(conv.group(1)) if conv else 5,
+                            "position": position,
+                            "conviction": conviction,
+                            "parse_error": perr,
                             "raw": text,
                             "tokens": (usage.get("input_tokens",0), usage.get("output_tokens",0)),
                             "cache_read": usage.get("cache_read_input_tokens", 0),
@@ -1254,7 +1478,9 @@ Write the committee statement now. 150-250 words."""
         threads = [threading.Thread(target=evaluate, args=(n,)) for n in active_investors]
         for t in threads: t.start()
         for t in threads: t.join(timeout=150)
-        verdicts = [results[n] for n in active_investors if n in results]
+        # Exclude parse-failures/errors from the verdict (kept in results for cost).
+        verdicts = [results[n] for n in active_investors
+                    if n in results and not results[n].get("parse_error")]
         return verdicts, results
 
     def _run_deliberation(self, brief, verdicts, active_investors):
@@ -1306,13 +1532,17 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
                         data = json.loads(resp_bytes)
                         text = "".join(b.get("text","") for b in data.get("content",[]) if b.get("type")=="text")
                         usage = data.get("usage", {})
-                        pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
-                        conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
+                        # Tolerant parse; carry forward this member's blind verdict
+                        # on failure (their real prior vote, never a phantom PASS).
+                        d_pos, d_conv, d_perr = parse_verdict(text)
                         rsp  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
+                        if d_perr:
+                            print(f"    ⚠ delib parse-failure {investor_name}: {d_perr} — blind carried forward")
                         results[investor_name] = {
                             "investor": investor_name,
-                            "position": pos.group(1).upper() if pos else my["position"],
-                            "conviction": int(conv.group(1)) if conv else my["conviction"],
+                            "position": d_pos  if d_pos  is not None else my["position"],
+                            "conviction": d_conv if d_conv is not None else my["conviction"],
+                            "parse_error": d_perr,
                             "response": rsp.group(1).strip() if rsp else text,
                             "prev_position": my["position"],
                             "prev_conviction": my["conviction"],
@@ -1400,6 +1630,14 @@ Write the statement now. 120-200 words."""
             self.send_json(200, {"ticker": ticker, "name": name, "error": "Enrichment failed"})
             return
 
+        # Decision-time advisory reference price from the enrichment web-search
+        # snapshot (GAP 1.6) — possibly stale/EOD, advisory only, never blocks.
+        reference_price, reference_price_asof = parse_reference_price(brief)
+        if reference_price is not None:
+            print(f"  Ref price: ${reference_price} as of {reference_price_asof or 'unknown'} (advisory)")
+        else:
+            print("  Ref price: none captured")
+
         # 2. Determine active investors — auto-include Aschenbrenner only if AI-relevant
         active = [n for n in INVESTORS if n != "Leopold Aschenbrenner"]
         if ai_relevant:
@@ -1411,7 +1649,11 @@ Write the statement now. 120-200 words."""
         # 3. Blind
         blind_verdicts, blind_results = self._run_blind(brief, active)
         vote = calculate_committee_vote(blind_verdicts)
-        print(f"  Blind: {vote['position']} ({vote['score']})")
+        blind_missing = [n for n in active
+                         if n not in blind_results or blind_results[n].get("parse_error")]
+        apply_quorum(vote, blind_verdicts, active, blind_missing)
+        print(f"  Blind: {vote['position']} ({vote['score']})"
+              + (f"  ⚠ incomplete — missing {blind_missing}" if not vote["quorum_met"] else ""))
 
         # 3b. Two-stage filter — does this stock earn a deliberation round?
         advances, reason = should_deliberate(blind_verdicts, vote)
@@ -1423,6 +1665,9 @@ Write the statement now. 120-200 words."""
         if run_delib and blind_verdicts and advances:
             delib_verdicts = self._run_deliberation(brief, blind_verdicts, active)
             vote = calculate_committee_vote(delib_verdicts)
+            delib_missing = [n for n in active
+                             if n not in {v["investor"] for v in delib_verdicts}]
+            apply_quorum(vote, delib_verdicts, active, delib_missing)
             print(f"  Final: {vote['position']} ({vote['score']}) — advanced: {reason}")
         elif run_delib and not advances:
             deliberation_skipped = True
@@ -1454,11 +1699,12 @@ Write the statement now. 120-200 words."""
         e_srch = enrich_usage.get("server_tool_use", {}).get("web_search_requests", 0)
         e_cost = stage_cost(HAIKU_MODEL, e_in, e_out, searches=e_srch)
 
-        # Blind (Sonnet) — per-investor tokens already captured in blind_verdicts
-        b_in  = sum(r.get("tokens", (0, 0))[0] for r in blind_verdicts)
-        b_out = sum(r.get("tokens", (0, 0))[1] for r in blind_verdicts)
-        b_cr  = sum(r.get("cache_read", 0)  for r in blind_verdicts)
-        b_cw  = sum(r.get("cache_write", 0) for r in blind_verdicts)
+        # Blind (Sonnet) — count every returned response, including parse-failures
+        # (excluded from the vote but they still cost tokens).
+        b_in  = sum(r.get("tokens", (0, 0))[0] for r in blind_results.values())
+        b_out = sum(r.get("tokens", (0, 0))[1] for r in blind_results.values())
+        b_cr  = sum(r.get("cache_read", 0)  for r in blind_results.values())
+        b_cw  = sum(r.get("cache_write", 0) for r in blind_results.values())
         b_cost = stage_cost(SONNET_MODEL, b_in, b_out, cw=b_cw, cr=b_cr)
 
         # Deliberation (Sonnet)
@@ -1504,6 +1750,8 @@ Write the statement now. 120-200 words."""
             "ai_relevant":   ai_relevant,
             "temperature":   TEMPERATURE,
             "brief":         brief,
+            "reference_price":      reference_price,
+            "reference_price_asof": reference_price_asof,
             "blind":         blind_verdicts,
             "deliberation":  delib_verdicts,
             "vote":          vote,
@@ -1513,6 +1761,9 @@ Write the statement now. 120-200 words."""
             "deliberation_skipped": deliberation_skipped,
             "skip_reason":   skip_reason,
             "active_count":  len(active),
+            "panel_complete": vote.get("panel_complete"),
+            "quorum_met":     vote.get("quorum_met"),
+            "missing_members": vote.get("missing_members", []),
             "cost":          round(stock_cost, 4),
             "source":        "screener_stock",
         })
@@ -1522,11 +1773,16 @@ Write the statement now. 120-200 words."""
             "name":          name,
             "ai_relevant":   ai_relevant,
             "brief":         brief[:1200],
+            "reference_price":      reference_price,
+            "reference_price_asof": reference_price_asof,
             "blind":         blind_verdicts,
             "deliberation":  delib_verdicts,
             "vote":          vote,
             "statement":     statement,
             "active_count":  len(active),
+            "panel_complete": vote.get("panel_complete"),
+            "quorum_met":     vote.get("quorum_met"),
+            "missing_members": vote.get("missing_members", []),
             "deliberation_skipped": deliberation_skipped,
             "skip_reason":   skip_reason,
             "advanced":      advances,
@@ -1639,22 +1895,29 @@ Write the statement now. 120-200 words."""
             active = [n for n in INVESTORS if n in active]
 
             verdicts = []
+            missing  = []
             for investor in active:
                 key = f"blind_{ticker}_{INVESTOR_CODE[investor]}"
                 entry = raw.get(key)
                 if not entry or not entry.get("text"):
+                    missing.append(investor)         # no result returned for this member
                     continue
                 text = entry["text"]
-                pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
-                conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
+                # Fail loud — a parse failure excludes the member (never PASS-5).
+                position, conviction, perr = parse_verdict(text)
+                if perr:
+                    missing.append(investor)
+                    print(f"    ✗ parse-failure {ticker}/{investor}: {perr}")
+                    continue
                 verdicts.append({
                     "investor": investor,
-                    "position": pos.group(1).upper() if pos else "PASS",
-                    "conviction": int(conv.group(1)) if conv else 5,
+                    "position": position,
+                    "conviction": conviction,
                     "raw": text,
                 })
 
             vote = calculate_committee_vote(verdicts)
+            apply_quorum(vote, verdicts, active, missing)
             advances, reason = should_deliberate(verdicts, vote)
             out[ticker] = {
                 "blind": verdicts, "vote": vote,
@@ -1672,8 +1935,11 @@ Write the statement now. 120-200 words."""
                 "blind_vote":    vote,
                 "advanced":      advances,
                 "advance_reason": reason,
+                "panel_complete": vote.get("panel_complete"),
+                "quorum_met":     vote.get("quorum_met"),
+                "missing_members": missing,
                 "source":        "batch_blind",
-            })
+            }, new_run=True)
 
         advancing = [t for t, r in out.items() if r["advances"]]
         print(f"  Blind retrieved: {len(out)} stocks, {len(advancing)} advance to deliberation")
@@ -1779,12 +2045,13 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
             active   = [v["investor"] for v in blind]
 
             delib = []
+            missing = []
             for investor in active:
                 key   = f"delib_{ticker}_{INVESTOR_CODE[investor]}"
                 entry = raw.get(key)
                 my    = next((v for v in blind if v["investor"] == investor), None)
                 if not entry or not entry.get("text"):
-                    # Carry forward blind verdict on failure
+                    # Carry forward blind verdict on failure (real prior vote).
                     if my:
                         delib.append({
                             "investor": investor, "position": my["position"],
@@ -1792,33 +2059,113 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
                             "response": "[Deliberation unavailable — blind verdict carried forward]",
                             "prev_position": my["position"], "prev_conviction": my["conviction"],
                         })
+                    else:
+                        missing.append(investor)
                     continue
                 text = entry["text"]
-                pos  = re.search(r"POSITION:\s*(BUY|PASS|ABSTAIN)", text, re.I)
-                conv = re.search(r"CONVICTION:\s*(\d+)", text, re.I)
+                # Tolerant parse; carry forward blind on failure (never PASS-5).
+                d_pos, d_conv, d_perr = parse_verdict(text)
                 rsp  = re.search(r"RESPONSE TO COMMITTEE:\s*([\s\S]+)", text, re.I)
+                if d_perr and not my:
+                    missing.append(investor)
+                    print(f"    ✗ delib parse-failure {ticker}/{investor}: {d_perr} (no blind to carry)")
+                    continue
                 delib.append({
                     "investor": investor,
-                    "position": pos.group(1).upper() if pos else (my["position"] if my else "PASS"),
-                    "conviction": int(conv.group(1)) if conv else (my["conviction"] if my else 5),
+                    "position": d_pos  if d_pos  is not None else (my["position"]   if my else "PASS"),
+                    "conviction": d_conv if d_conv is not None else (my["conviction"] if my else 5),
                     "response": rsp.group(1).strip() if rsp else text,
                     "prev_position": my["position"] if my else "PASS",
                     "prev_conviction": my["conviction"] if my else 5,
                 })
 
             vote = calculate_committee_vote(delib)
+            apply_quorum(vote, delib, active, missing)
             out[ticker] = {"deliberation": delib, "vote": vote}
 
             # Merge the deliberation half into the dated record started at
-            # blind-retrieve. "vote" here is the final (post-deliberation) vote.
+            # blind-retrieve (same run). "vote" here is the final post-deliberation
+            # vote; new_run=False keeps it merged onto its own blind half.
             archive_screen(ticker, {
                 "deliberation": delib,
                 "vote":         vote,
                 "source":       "batch_deliberate",
-            })
+            }, new_run=False)
 
         print(f"  Deliberation retrieved: {len(out)} stocks")
         self.send_json(200, {"results": out})
+
+# ── Self-test (no network) — run with: python furton_server.py --selftest ───────
+
+def run_selftests():
+    """Offline checks for the vote-integrity fixes. Returns process exit code."""
+    failures = []
+
+    def check(name, got, want):
+        if got != want:
+            failures.append(f"  ✗ {name}\n      got:  {got!r}\n      want: {want!r}")
+        else:
+            print(f"  ✓ {name}")
+
+    print("\n── parse_verdict (markdown/punctuation tolerance) ──")
+    check("plain",            parse_verdict("POSITION: BUY\nCONVICTION: 9"),            ("BUY", 9, None))
+    check("bold markdown",    parse_verdict("**POSITION:** BUY\n**CONVICTION:** 9/10"), ("BUY", 9, None))
+    check("dash separator",   parse_verdict("Position - Buy\nConviction - 7"),          ("BUY", 7, None))
+    check("inline conviction",parse_verdict("POSITION: **BUY** (conviction 9/10)"),     ("BUY", 9, None))
+    check("pass low",         parse_verdict("POSITION: PASS\nCONVICTION: 3"),           ("PASS", 3, None))
+    check("conviction ten",   parse_verdict("POSITION: BUY\nCONVICTION: 10"),           ("BUY", 10, None))
+    check("abstain no conv",  parse_verdict("POSITION: ABSTAIN"),                       ("ABSTAIN", 0, None))
+    # Fail-loud cases — must NOT silently become PASS/5
+    check("garbage",          parse_verdict("I think this is a great company."),
+          (None, None, "position unparseable; conviction unparseable"))
+    check("pos only",         parse_verdict("POSITION: BUY"),                ("BUY", None, "conviction unparseable"))
+    check("conv out of range",parse_verdict("POSITION: BUY\nCONVICTION: 15"),("BUY", None, "conviction unparseable"))
+
+    print("\n── committee_quorum ──")
+    check("quorum of 5", committee_quorum(5), 4)
+    check("quorum of 4", committee_quorum(4), 3)
+    check("quorum of 3", committee_quorum(3), 3)
+    check("quorum of 2", committee_quorum(2), 2)
+
+    print("\n── apply_quorum (BUY gated on half panel) ──")
+    five = ["A", "B", "C", "D", "E"]
+    v_half = apply_quorum({"position": "BUY", "score": 0.9}, [1, 2, 3], five, ["D", "E"])
+    check("3/5 BUY → INCOMPLETE", (v_half["position"], v_half["quorum_met"], v_half["panel_complete"]),
+          ("INCOMPLETE", False, False))
+    v_one = apply_quorum({"position": "BUY", "score": 0.9}, [1, 2, 3, 4], five, ["E"])
+    check("4/5 BUY → stays BUY",  (v_one["position"], v_one["quorum_met"], v_one["panel_complete"]),
+          ("BUY", True, False))
+    v_pass = apply_quorum({"position": "PASS", "score": 0.0}, [1, 2, 3], five, ["D", "E"])
+    check("3/5 PASS → stays PASS",(v_pass["position"], v_pass["quorum_met"]), ("PASS", False))
+
+    print("\n── should_deliberate (high-conviction PASS must not advance) ──")
+    pass_conv9 = [{"position": "PASS", "conviction": 9}, {"position": "PASS", "conviction": 1}]
+    vote_p = calculate_committee_vote(pass_conv9)
+    adv_p, _ = should_deliberate(pass_conv9, vote_p)
+    check("unanimous PASS w/ conv9 → skip", adv_p, False)
+
+    buy_conv8 = [{"position": "BUY", "conviction": 8}]
+    vote_b = calculate_committee_vote(buy_conv8)
+    adv_b, _ = should_deliberate(buy_conv8, vote_b)
+    check("BUY conv8 → advance", adv_b, True)
+
+    # Isolate the conviction path: BUY conv8 diluted below the score threshold
+    diluted = ([{"position": "BUY", "conviction": 8}]
+               + [{"position": "PASS", "conviction": 10}] * 3
+               + [{"position": "PASS", "conviction": 5}])
+    vote_d = calculate_committee_vote(diluted)
+    adv_d, reason_d = should_deliberate(diluted, vote_d)
+    check("low-score BUY conv8 → advance via conviction", adv_d, True)
+
+    print()
+    if failures:
+        print(f"SELFTEST FAILED — {len(failures)} case(s):")
+        for f in failures:
+            print(f)
+        return 1
+    print("SELFTEST PASSED — all vote-integrity checks green.")
+    return 0
+
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
@@ -1875,4 +2222,7 @@ def main():
         print("\n\nServer stopped.")
 
 if __name__ == "__main__":
+    import sys
+    if "--selftest" in sys.argv:
+        sys.exit(run_selftests())
     main()

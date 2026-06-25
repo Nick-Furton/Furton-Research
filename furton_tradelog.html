@@ -244,7 +244,9 @@
   <div class="summary-cell">
     <div class="summary-label">Cash Remaining</div>
     <div class="summary-value" id="sumCash">$10,000</div>
-    <div class="summary-sub">of starting capital</div>
+    <div class="summary-sub" id="sumCashSub">
+      <span style="cursor:pointer;text-decoration:underline;" onclick="recordCashEvent()">+ dividend / cash</span>
+    </div>
   </div>
   <div class="summary-cell">
     <div class="summary-label">Starting Capital</div>
@@ -315,6 +317,7 @@
       <b>reinvest</b> proceeds into new targets
     </div>
   </div>
+  <div id="ddBanner" style="display:none;"></div>
   <div class="rebalance-actions">
     <button class="ghost-btn" onclick="document.getElementById('rebalFile').click()">Load this week's screener →</button>
     <input type="file" id="rebalFile" accept=".json" style="display:none" onchange="loadRebalance(event)" />
@@ -390,12 +393,16 @@ function buildTicket(targets) {
   // Portfolio base = held positions at current market value + idle cash.
   // Target weights are applied to this base, which is how reinvestment happens:
   // the committee's weights sum to 100%, so a full reconcile deploys all cash.
+  renderDDFlag();   // re-check the published drawdown override before generating a ticket
   const held = {};
   for (const t of trades) if (t.shares > 0) held[t.ticker] = t;
 
   const deployedAtMarket = Object.values(held).reduce((s,t) => s + positionValue(t), 0);
-  const deployedAtCost   = Object.values(held).reduce((s,t) => s + t.fillPrice * t.shares, 0);
-  const cash      = startingCapital - deployedAtCost;
+  // True cash balance: starting capital minus cost of current holdings, plus all
+  // realized gains, dividends and manual adjustments (the running ledger). This
+  // replaces the old `startingCapital − cost` residual, which silently assumed a
+  // static $10k and ignored realized P&L, dividends and prior-week cash.
+  const cash      = cashRemaining();
   const totalBase = deployedAtMarket + cash;
 
   const targetMap = {};
@@ -628,7 +635,18 @@ function applyAllTicket() {
 }
 
 function _applyOne(a) {
+  const today = (lastTicket && lastTicket.date) || new Date().toISOString().split('T')[0];
   if (a.action === 'SELL' && a.kind === 'sell-all') {
+    // Realized P&L on the full exit = proceeds (market value, a.amount) − cost basis.
+    // The cost portion returns to cash automatically as the holding leaves
+    // `deployedCost()`; the ledger only needs to capture the gain/loss on top.
+    const cost = trades.filter(t => t.ticker === a.ticker)
+                       .reduce((s,t) => s + (t.shares > 0 ? t.fillPrice * t.shares : 0), 0);
+    const realized = a.amount - cost;
+    if (Math.abs(realized) > 0.005) {
+      cashEvents.push({ date: today, type: 'realized', ticker: a.ticker, amount: realized,
+        note: `Exit ${a.ticker} — proceeds ${fmtMoney(a.amount)} vs cost ${fmtMoney(cost)}` });
+    }
     trades = trades.filter(t => t.ticker !== a.ticker);
   } else if (a.action === 'BUY' && (a.kind === 'new' || a.kind === 'reinvest')) {
     // Add a pending-fill position (or merge into an existing pending one)
@@ -644,15 +662,32 @@ function _applyOne(a) {
       });
     }
   } else if (a.kind === 'adjust') {
-    // Trim or add to an existing held position. Adjust the dollar basis and
-    // re-derive shares at the existing fill price as an approximation; the user
-    // updates the exact fill after executing in Schwab.
+    // Trim or add to an existing held position. The user updates the exact fill
+    // after executing in Schwab; we approximate at the current marked price.
     const t = trades.find(x => x.ticker === a.ticker && x.shares > 0);
     if (t) {
-      const delta = a.action === 'BUY' ? a.amount : -a.amount;
-      t.amount = Math.max(0, t.amount + Math.round(delta));
-      if (t.fillPrice > 0) t.shares = t.amount / t.fillPrice;
-      t.adjustNote = `${a.action === 'BUY' ? 'Added' : 'Trimmed'} ${fmtMoney(a.amount)} — confirm fill`;
+      if (a.action === 'BUY') {
+        // Add dollars → more cost basis. Cash falls automatically via deployedCost();
+        // the ledger is untouched (it holds only realized P&L + dividends).
+        t.amount = Math.max(0, t.amount + Math.round(a.amount));
+        if (t.fillPrice > 0) t.shares = t.amount / t.fillPrice;
+        t.adjustNote = `Added ${fmtMoney(a.amount)} — confirm fill`;
+      } else {
+        // Trim: sell shares worth a.amount at the marked price. Realized P&L on the
+        // sold shares = proceeds − their cost basis; remaining cost basis shrinks
+        // proportionally (so deployedCost() returns the freed cost to the balance).
+        const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
+        const sharesSold = px > 0 ? Math.min(t.shares, a.amount / px) : 0;
+        const costSold   = sharesSold * t.fillPrice;
+        const realized   = a.amount - costSold;
+        if (Math.abs(realized) > 0.005) {
+          cashEvents.push({ date: today, type: 'realized', ticker: a.ticker, amount: realized,
+            note: `Trim ${a.ticker} — proceeds ${fmtMoney(a.amount)} vs cost ${fmtMoney(costSold)}` });
+        }
+        t.shares = Math.max(0, t.shares - sharesSold);
+        t.amount = Math.round(t.shares * t.fillPrice);
+        t.adjustNote = `Trimmed ${fmtMoney(a.amount)} — confirm fill`;
+      }
     }
   }
 }
@@ -662,9 +697,46 @@ function clearTicket() {
   document.getElementById('ticketWrap').style.display = 'none';
 }
 
+// ── Drawdown-override warning ───────────────────────────────────────────────
+// The Performance panel publishes `furton:ddflag` (cumulative alpha vs the Dow).
+// Surface it here, where trades are actually built, so a tripped override is seen
+// before a ticket is generated. It warns — it does not hard-block order entry.
+async function renderDDFlag() {
+  const el = document.getElementById('ddBanner');
+  if (!el) return;
+  let flag = null;
+  try {
+    const r = await window.storage.get('furton:ddflag');
+    if (r && r.value) flag = JSON.parse(r.value);
+  } catch (e) { /* no performance data yet */ }
+  if (!flag || !flag.tripped) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const alpha = (flag.alpha_pct != null) ? Math.abs(flag.alpha_pct).toFixed(1) : '?';
+  el.style.display = 'block';
+  el.style.cssText = 'display:block;margin-bottom:14px;padding:11px 14px;border:1px solid var(--short);' +
+    'background:rgba(181,52,26,0.08);color:var(--loss);font-size:11px;line-height:1.5;';
+  el.innerHTML = `<b>⚠ Drawdown override tripped</b> — the committee trails the Dow by ${alpha} pts ` +
+    `(threshold ${flag.threshold ?? 10} pts, as of ${flag.as_of || 'latest'}). ` +
+    `Review before acting on any ticket below. This is a monitor, not an automatic block.`;
+}
+
 // ── State + persistence ────────────────────────────────────────────────────
 let trades = [];
 let startingCapital = 10000;
+// Cash events that are NOT reconstructable from the current `trades` list:
+// realized P&L on closed/trimmed positions, dividends received, and manual
+// cash adjustments. Each: {date, type:'realized'|'dividend'|'cash', amount, ticker?, note?}.
+// True cash = startingCapital − cost of current holdings + Σ(cashEvents). This is
+// the real running balance — buys/holds flow through holdings cost automatically,
+// so editing a held row stays consistent without re-deriving deltas.
+let cashEvents = [];
+
+// Sum of all recorded cash events (realized P&L + dividends + manual adjustments).
+function cashLedger() { return cashEvents.reduce((s, e) => s + (e.amount || 0), 0); }
+// Cost basis of currently-held (filled) positions.
+function deployedCost() { return trades.reduce((s, t) => s + (t.shares > 0 ? t.fillPrice * t.shares : 0), 0); }
+// True cash balance: starting capital, less what's tied up in holdings at cost,
+// plus every realized gain/loss, dividend and manual adjustment since inception.
+function cashRemaining() { return startingCapital - deployedCost() + cashLedger(); }
 
 async function loadState() {
   try {
@@ -675,13 +747,21 @@ async function loadState() {
     const c = await window.storage.get('furton:startingCapital');
     if (c && c.value) startingCapital = parseFloat(c.value);
   } catch (e) { startingCapital = 10000; }
+  try {
+    const ce = await window.storage.get('furton:cashEvents');
+    if (ce && ce.value) cashEvents = JSON.parse(ce.value);
+  } catch (e) { cashEvents = []; }
+  // Migration: with no recorded events, cashLedger()=0, so cashRemaining() reduces
+  // to the legacy "startingCapital − cost" — existing portfolios load unchanged.
   render();
+  renderDDFlag();
 }
 
 async function saveState() {
   try {
     await window.storage.set('furton:trades', JSON.stringify(trades));
     await window.storage.set('furton:startingCapital', String(startingCapital));
+    await window.storage.set('furton:cashEvents', JSON.stringify(cashEvents));
   } catch (e) {
     console.error('Save failed', e);
   }
@@ -914,7 +994,8 @@ function render() {
   const curValue = trades.reduce((s,t) => s + (t.shares > 0 ? positionValue(t) : 0), 0);
   const totalPL  = trades.reduce((s,t) => s + positionPL(t), 0);
   const plPct    = deployed > 0 ? (totalPL / deployed * 100) : 0;
-  const cash     = startingCapital - deployed;
+  const ledger   = cashLedger();
+  const cash     = cashRemaining();   // starting − cost + realized P&L + dividends
 
   document.getElementById('sumDeployed').textContent = fmtMoney(deployed);
   document.getElementById('sumPositions').textContent = `${trades.length} position${trades.length!==1?'s':''}`;
@@ -924,6 +1005,16 @@ function render() {
   plEl.className = 'summary-value ' + (totalPL > 0.005 ? 'gain' : totalPL < -0.005 ? 'loss' : '');
   document.getElementById('sumPLpct').textContent = (plPct >= 0 ? '+' : '') + plPct.toFixed(1) + '%';
   document.getElementById('sumCash').textContent = fmtMoney(cash);
+  // Sub-line: keep the "record" link, and show the ledger contribution when non-zero.
+  const ledgerTxt = Math.abs(ledger) >= 0.5
+    ? ` · incl. ${ledger >= 0 ? '+' : '−'}${fmtMoney(Math.abs(ledger))} dividends/realized`
+    : '';
+  const hasManual = cashEvents.some(e => e.type === 'dividend' || e.type === 'cash');
+  const undoLink = hasManual
+    ? ` · <span style="cursor:pointer;text-decoration:underline;" onclick="undoLastCashEvent()">undo</span>`
+    : '';
+  document.getElementById('sumCashSub').innerHTML =
+    `<span style="cursor:pointer;text-decoration:underline;" onclick="recordCashEvent()">+ dividend / cash</span>${undoLink}${ledgerTxt}`;
   document.getElementById('sumStart').textContent = fmtMoney(startingCapital);
 }
 
@@ -935,13 +1026,47 @@ function editStartingCapital() {
   if (n > 0) { startingCapital = n; saveState(); render(); }
 }
 
+// Record a dividend (or any cash in/out) into the running ledger. Because all
+// dividends are reinvested, the cash lands in the balance and the next Weekly
+// Rebalance redeploys it into target weights — that is the reinvestment. Use a
+// negative number to log cash withdrawn.
+function recordCashEvent() {
+  const v = prompt('Dividend / cash received ($) — reinvested at the next rebalance.\n(Use a negative number for cash withdrawn.)', '');
+  if (v === null) return;
+  const amt = parseNum(v);
+  if (!amt) return;
+  const date = new Date().toISOString().split('T')[0];
+  cashEvents.push({
+    date, type: amt >= 0 ? 'dividend' : 'cash', amount: amt,
+    note: amt >= 0 ? 'Dividend / cash in — reinvested at next rebalance' : 'Cash withdrawn',
+  });
+  saveState(); render();
+  showToast(`Recorded ${amt >= 0 ? '+' : '−'}${fmtMoney(Math.abs(amt))} to cash. It redeploys on your next rebalance.`);
+}
+
+// Remove the most recent manual dividend/cash entry (not realized-sale events).
+function undoLastCashEvent() {
+  for (let i = cashEvents.length - 1; i >= 0; i--) {
+    if (cashEvents[i].type === 'dividend' || cashEvents[i].type === 'cash') {
+      const e = cashEvents.splice(i, 1)[0];
+      saveState(); render();
+      showToast(`Removed cash entry ${e.amount >= 0 ? '+' : '−'}${fmtMoney(Math.abs(e.amount))}.`);
+      return;
+    }
+  }
+  showToast('No manual cash entries to undo.', false);
+}
+
 function exportLog() {
   const deployed = trades.reduce((s,t) => s + (t.shares > 0 ? t.fillPrice * t.shares : 0), 0);
   const record = {
     exported: new Date().toISOString(),
     starting_capital: startingCapital,
     capital_deployed: deployed,
-    cash_remaining: startingCapital - deployed,
+    cash_remaining: cashRemaining(),                       // starting − cost + realized P&L + dividends
+    realized_and_income: +cashLedger().toFixed(2),         // cumulative realized P&L + dividends + adjustments
+    dividend_treatment: 'reinvested — dividends land in cash and redeploy at the next rebalance',
+    cash_events: cashEvents.map(e => ({ date: e.date, type: e.type, ticker: e.ticker || null, amount: +e.amount.toFixed(2), note: e.note || '' })),
     total_unrealized_pl: trades.reduce((s,t) => s + positionPL(t), 0),
     positions: trades.map(t => ({
       ticker: t.ticker, name: t.name, position: t.position,
@@ -973,6 +1098,7 @@ function exportLog() {
 async function clearAll() {
   if (!confirm('Delete all logged trades? This cannot be undone.')) return;
   trades = [];
+  cashEvents = [];
   await saveState();
   render();
 }
@@ -1019,9 +1145,13 @@ function restoreLog(event) {
         pendingFill: (p.fill_price ?? p.fillPrice ?? 0) <= 0,
       }));
       if (data.starting_capital) startingCapital = data.starting_capital;
+      // Restore the cash ledger (realized P&L + dividends + adjustments) if present.
+      cashEvents = Array.isArray(data.cash_events)
+        ? data.cash_events.map(e => ({ date: e.date, type: e.type || 'cash', ticker: e.ticker || undefined, amount: parseNum(e.amount), note: e.note || '' }))
+        : [];
       saveState();
       render();
-      showToast(`✓ Restored ${trades.length} position(s) from backup.`);
+      showToast(`✓ Restored ${trades.length} position(s)${cashEvents.length ? ` + ${cashEvents.length} cash event(s)` : ''} from backup.`);
     } catch (err) {
       showToast('✗ Could not read that file: ' + err.message, false);
     }

@@ -109,7 +109,7 @@
   <div class="summary-cell">
     <div class="summary-label">Committee Return</div>
     <div class="summary-value acct" id="sumAcct">—</div>
-    <div class="summary-sub">since inception</div>
+    <div class="summary-sub" id="sumAcctSub">total return · dividends reinvested</div>
   </div>
   <div class="summary-cell">
     <div class="summary-label">Dow Return</div>
@@ -187,8 +187,9 @@
 
 <div class="chart-section">
   <div class="chart-legend">
-    <div class="legend-item"><span class="legend-swatch" style="background:var(--acct-bright)"></span> Committee (your account)</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:var(--dow)"></span> Dow Jones</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--acct-bright)"></span> Committee — total return (dividends reinvested)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--acct);opacity:0.9"></span> Committee — price only (ex-dividends)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--dow)"></span> Dow Jones (price)</div>
   </div>
   <div id="chartWrap"><div class="chart-empty">Add at least two weeks of data to see the performance chart.</div></div>
 </div>
@@ -199,7 +200,8 @@
       <tr>
         <th class="left">Date</th>
         <th>Account $</th>
-        <th>Committee Return</th>
+        <th>Committee Total</th>
+        <th>Committee Price</th>
         <th>Dow Level</th>
         <th>Dow Return</th>
         <th>Alpha</th>
@@ -208,7 +210,7 @@
       </tr>
     </thead>
     <tbody id="perfBody">
-      <tr class="empty-row"><td colspan="8">No entries yet. Record your first week above to set the baseline.</td></tr>
+      <tr class="empty-row"><td colspan="9">No entries yet. Record your first week above to set the baseline.</td></tr>
     </tbody>
   </table>
 </div>
@@ -373,13 +375,30 @@ function deleteEntry(date) {
 function computed() {
   if (entries.length === 0) return [];
   const base = entries[0];
-  return entries.map(e => ({
-    ...e,
-    div:     e.div || 0,
-    acctRet: (e.acct / base.acct - 1) * 100,
-    dowRet:  (e.dow / base.dow - 1) * 100,
-    get alpha() { return this.acctRet - this.dowRet; },
-  }));
+  // Dividends are reinvested, so the recorded account value already compounds
+  // them in: acctRet is the TOTAL return (the real result). To compare fairly
+  // against the Dow *price* index, we also derive a PRICE-only return that strips
+  // the income out period-by-period and chains it:
+  //   price periodic return ≈ (acct_i − div_i) / acct_{i-1} − 1
+  // With no dividends recorded, priceRet === acctRet (the two lines coincide).
+  let priceIdx = 1;
+  return entries.map((e, i) => {
+    const div = e.div || 0;
+    if (i > 0) {
+      const prev = entries[i - 1];
+      const priceR = prev.acct > 0 ? (e.acct - div) / prev.acct - 1 : 0;
+      priceIdx *= (1 + priceR);
+    }
+    return {
+      ...e,
+      div,
+      acctRet:  (e.acct / base.acct - 1) * 100,   // total return (dividends reinvested)
+      priceRet: (priceIdx - 1) * 100,             // price-only return (dividends stripped)
+      dowRet:   (e.dow / base.dow - 1) * 100,
+      get alpha()      { return this.acctRet - this.dowRet; },   // headline: total vs Dow
+      get priceAlpha() { return this.priceRet - this.dowRet; },  // apples-to-apples: price vs Dow price
+    };
+  });
 }
 
 function render() {
@@ -387,7 +406,7 @@ function render() {
   const body = document.getElementById('perfBody');
 
   if (rows.length === 0) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="8">No entries yet. Record your first week above to set the baseline.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="9">No entries yet. Record your first week above to set the baseline.</td></tr>';
   } else {
     body.innerHTML = rows.map((r, i) => {
       const isBase = i === 0;
@@ -397,6 +416,7 @@ function render() {
           <td class="left">${r.date}${isBase ? ' <span class="baseline-tag">baseline</span>' : ''}</td>
           <td>${fmtMoney(r.acct)}</td>
           <td class="${r.acctRet >= 0 ? 'ret-pos' : 'ret-neg'}">${isBase ? '—' : fmtPct(r.acctRet)}</td>
+          <td class="${r.priceRet >= 0 ? 'ret-pos' : 'ret-neg'}">${isBase ? '—' : fmtPct(r.priceRet)}</td>
           <td>${fmtNum(r.dow)}</td>
           <td class="${r.dowRet >= 0 ? 'ret-pos' : 'ret-neg'}">${isBase ? '—' : fmtPct(r.dowRet)}</td>
           <td class="${alpha >= 0 ? 'alpha-pos' : 'alpha-neg'}">${isBase ? '—' : fmtPct(alpha)}</td>
@@ -421,6 +441,12 @@ function render() {
       alEl.textContent = fmtPct(last.alpha);
       alEl.className = 'summary-value ' + (last.alpha >= 0 ? 'gain' : 'loss');
     }
+    // Sub-line on the committee cell: surface the price-only (ex-dividend) leg.
+    const hasDiv = rows.some(r => r.div > 0);
+    document.getElementById('sumAcctSub').textContent =
+      (rows.length > 1 && hasDiv)
+        ? `total return · price-only ${fmtPct(last.priceRet)}`
+        : 'total return · dividends reinvested';
     document.getElementById('sumAlphaSub').textContent =
       rows.length < 2 ? 'the headline result' :
       (last.alpha >= 0 ? 'committee ahead of the Dow' : 'committee behind the Dow');
@@ -437,6 +463,25 @@ function render() {
 
   renderChart(rows);
   renderRisk(rows);
+  publishDDFlag(rows);
+}
+
+// Publish the drawdown-override state to shared storage so the Trade Log panel
+// can surface a pre-trade warning (the two panels keep separate data otherwise).
+async function publishDDFlag(rows) {
+  try {
+    const m = riskMetrics(rows);
+    const payload = {
+      tripped:   m.ddFlag === 'tripped',
+      state:     m.ddFlag,                                   // 'tripped' | 'ok' | 'na'
+      alpha_pct: (m.alpha === null || isNaN(m.alpha)) ? null : +m.alpha.toFixed(2),
+      threshold: DD_OVERRIDE_VS_DOW,
+      weeks:     rows.length,
+      as_of:     rows.length ? rows[rows.length - 1].date : null,
+      updated:   new Date().toISOString(),
+    };
+    await window.storage.set('furton:ddflag', JSON.stringify(payload));
+  } catch (e) { /* non-fatal: trade log just won't show the banner */ }
 }
 
 function renderChart(rows) {
@@ -449,9 +494,11 @@ function renderChart(rows) {
   const W = 800, H = 360, padL = 52, padR = 20, padT = 20, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  const acctVals = rows.map(r => r.acctRet);
-  const dowVals  = rows.map(r => r.dowRet);
-  const all = [...acctVals, ...dowVals, 0];
+  const acctVals  = rows.map(r => r.acctRet);
+  const priceVals = rows.map(r => r.priceRet);
+  const dowVals   = rows.map(r => r.dowRet);
+  const hasDiv    = rows.some(r => r.div > 0);   // only draw the price line if dividends were recorded
+  const all = [...acctVals, ...(hasDiv ? priceVals : []), ...dowVals, 0];
   let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1) { hi += 1; lo -= 1; }       // avoid flat range
   const padRange = (hi - lo) * 0.12;
@@ -488,8 +535,10 @@ function renderChart(rows) {
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
       ${grid}
       <path d="${linePath(dowVals)}" fill="none" stroke="var(--dow)" stroke-width="2" />
+      ${hasDiv ? `<path d="${linePath(priceVals)}" fill="none" stroke="var(--acct)" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.9" />` : ''}
       <path d="${linePath(acctVals)}" fill="none" stroke="var(--acct-bright)" stroke-width="2" />
       ${dots(dowVals, 'var(--dow)')}
+      ${hasDiv ? dots(priceVals, 'var(--acct)') : ''}
       ${dots(acctVals, 'var(--acct-bright)')}
       ${xlabels}
     </svg>`;
@@ -508,7 +557,8 @@ function exportJSON() {
     baseline_date: rows.length ? rows[0].date : null,
     risk_free_annual_pct: RISK_FREE_ANNUAL * 100,
     dividends_received_total: +rows.reduce((s, r) => s + (r.div || 0), 0).toFixed(2),
-    latest: last && rows.length > 1 ? { committee_return_pct: +last.acctRet.toFixed(2), dow_return_pct: +last.dowRet.toFixed(2), alpha_pct: +last.alpha.toFixed(2) } : null,
+    latest: last && rows.length > 1 ? { committee_total_return_pct: +last.acctRet.toFixed(2), committee_price_return_pct: +last.priceRet.toFixed(2), dow_return_pct: +last.dowRet.toFixed(2), alpha_pct: +last.alpha.toFixed(2), price_alpha_pct: +last.priceAlpha.toFixed(2) } : null,
+    dividend_treatment: 'reinvested — account value is total return; price_return_pct strips dividends for comparison vs the Dow price index',
     risk_metrics: {
       sharpe_ratio:           round(m.sharpe, 2),
       annualized_volatility_pct: round(m.vol, 2),
@@ -523,15 +573,16 @@ function exportJSON() {
       },
     },
     entries: rows.map(r => ({ date: r.date, account_value: r.acct, dow_level: r.dow, dividends: r.div || 0,
-      committee_return_pct: +r.acctRet.toFixed(3), dow_return_pct: +r.dowRet.toFixed(3), alpha_pct: +r.alpha.toFixed(3) })),
+      committee_total_return_pct: +r.acctRet.toFixed(3), committee_price_return_pct: +r.priceRet.toFixed(3),
+      dow_return_pct: +r.dowRet.toFixed(3), alpha_pct: +r.alpha.toFixed(3) })),
   };
   downloadFile(JSON.stringify(record, null, 2), `furton_performance_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
 }
 
 function exportCSV() {
   const rows = computed();
-  let csv = 'date,account_value,dow_level,dividends,committee_return_pct,dow_return_pct,alpha_pct\n';
-  csv += rows.map(r => `${r.date},${r.acct},${r.dow},${r.div || 0},${r.acctRet.toFixed(3)},${r.dowRet.toFixed(3)},${r.alpha.toFixed(3)}`).join('\n');
+  let csv = 'date,account_value,dow_level,dividends,committee_total_return_pct,committee_price_return_pct,dow_return_pct,alpha_pct\n';
+  csv += rows.map(r => `${r.date},${r.acct},${r.dow},${r.div || 0},${r.acctRet.toFixed(3)},${r.priceRet.toFixed(3)},${r.dowRet.toFixed(3)},${r.alpha.toFixed(3)}`).join('\n');
   downloadFile(csv, `furton_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
 }
 
