@@ -1039,7 +1039,7 @@ function renderRecord(d){
     `Generated: <b>${(d.generated||'').replace('T',' ')}</b>`;
 
   $('notes').innerHTML=(d.warnings&&d.warnings.length)
-    ?'<ul style="margin-left:18px;line-height:1.9">'+d.warnings.map(w=>`<li>${w}</li>`).join('')+'</ul>'
+    ?d.warnings.map(w=>`<p style="margin:0 0 10px;line-height:1.9">${w}</p>`).join('')
     :'None: everything parsed and reconciled without adjustments.';
 }
 
