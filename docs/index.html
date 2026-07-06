@@ -746,6 +746,10 @@ function grad(ctx,rgb,a1,a2){
 /* Tapping a chart pins its tooltip (touch fires no mouseout to clear it).
    Any press outside that canvas dismisses it. */
 document.addEventListener('pointerdown', e => {
+  /* a tapped-open term definition stays focused on touch until another
+     focusable element is tapped — dismiss it on any outside press instead */
+  const ae = document.activeElement;
+  if (ae && ae.matches && ae.matches('abbr[data-tip]') && !ae.contains(e.target)) ae.blur();
   for (const id in state.charts) {
     const ch = state.charts[id];
     if (!ch || !ch.canvas || e.target === ch.canvas) continue;
