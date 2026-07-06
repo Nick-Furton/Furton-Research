@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Howard Marks · Furton Research Committee</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%236d7cff'/%3E%3Crect x='31' y='31' width='38' height='38' rx='6' transform='rotate(45 50 50)' fill='%23070b14'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #070b14; --panel: rgba(255,255,255,.035); --panel2: rgba(255,255,255,.06);
+    --line: rgba(255,255,255,.08);
+    --fg: #e7ebf4; --fg-dim: #7d879e; --fg-mid: #8b93a7;
+    --acc: #6d7cff; --acc2: #38e1ff;
+    --c: #a8c860;             /* investor accent */
+    --c-rgb: 168,200,96;
+    --c-soft: rgba(168,200,96, 0.10);
+    --disp: Inter, system-ui, sans-serif; --body: Inter, system-ui, sans-serif;
+    --mono: 'JetBrains Mono', Consolas, monospace;
+    --maxw: 1060px;
+  }
+  html { scroll-behavior: smooth; color-scheme: dark; }
+  :focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15.5px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(700px 420px at 15% -8%, rgba(var(--c-rgb), .10), transparent 60%),
+      radial-gradient(640px 400px at 88% -12%, rgba(109,124,255, .08), transparent 60%);
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+  nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); background: rgba(7,11,20,0.72); border-bottom: 1px solid var(--line); }
+  .nav-inner { max-width: var(--maxw); margin: 0 auto; padding: 15px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-brand { font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
+  .nav-back { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-dim); transition: color 0.15s; }
+  .nav-back:hover { color: var(--fg); }
+
+  /* Hero */
+  .profile-hero { padding: 72px 0 48px; border-bottom: 1px solid var(--line); }
+  .ph-grid { display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: center; }
+  @media (max-width: 720px) { .ph-grid { grid-template-columns: 1fr; gap: 24px; } }
+
+  .portrait { width: 200px; height: 240px; border-radius: 16px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, var(--c-soft), rgba(255,255,255,.03)); border: 1px solid rgba(var(--c-rgb), .5); display: flex; align-items: center; justify-content: center; }
+  .portrait-initial { font-weight: 800; font-size: 88px; color: var(--c); opacity: 0.9; letter-spacing: -.04em; }
+  .portrait-tag { position: absolute; bottom: 0; left: 0; right: 0; padding: 8px 12px; background: rgba(7,11,20,0.8); font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-dim); text-align: center; }
+
+  .ph-role { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c); border: 1px solid rgba(var(--c-rgb), .5); border-radius: 100px; padding: 5px 14px; margin-bottom: 18px; }
+  .ph-name { font-weight: 800; font-size: clamp(34px, 5vw, 52px); line-height: 1.04; letter-spacing: -0.03em; }
+  .ph-frame { font-size: 17px; color: var(--fg-mid); margin-top: 12px; }
+  .ph-grounding { font-family: var(--mono); font-size: 11.5px; color: var(--fg-dim); margin-top: 18px; letter-spacing: 0.03em; }
+  .ph-grounding b { color: var(--c); font-weight: 500; }
+
+  /* Stats band */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015); }
+  @media (max-width: 720px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat { padding: 28px 24px; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  @media (max-width: 720px) { .stat:nth-child(2) { border-right: none; } }
+  .stat-value { font-family: var(--mono); font-weight: 600; font-size: 28px; line-height: 1; color: var(--c); letter-spacing: -.02em; }
+  .stat-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-dim); margin-top: 10px; line-height: 1.5; }
+
+  /* Body sections */
+  .section { padding: 52px 0; border-bottom: 1px solid var(--line); }
+  .section:last-of-type { border-bottom: none; }
+  .section-eyebrow { font-size: 14px; font-weight: 600; color: var(--c); margin-bottom: 16px; }
+  .section h2 { font-weight: 800; font-size: 26px; letter-spacing: -0.02em; margin-bottom: 18px; }
+  .section p { color: var(--fg-mid); font-size: 15px; line-height: 1.8; margin-bottom: 16px; }
+  .section p:last-child { margin-bottom: 0; }
+  .pull { font-size: 19px; font-weight: 500; font-style: italic; line-height: 1.5; color: var(--fg); border-left: 1px solid var(--c); padding-left: 22px; margin: 28px 0; }
+
+  /* Sources */
+  .sources { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
+  .source-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .source-row:last-child { border-bottom: none; }
+  .source-title { font-size: 15px; font-weight: 600; color: var(--fg); }
+  .source-detail { font-size: 12.5px; color: var(--fg-dim); margin-top: 3px; }
+  .source-kind { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c); white-space: nowrap; }
+
+  /* Committee role */
+  .role-box { background: var(--c-soft); border: 1px solid rgba(var(--c-rgb), .55); border-radius: 16px; padding: 28px 30px; }
+  .role-box h2 { margin-bottom: 14px; }
+
+  /* Other investors nav */
+  .others { padding: 44px 0 64px; }
+  .others-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 20px; }
+  .others-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .others-grid { grid-template-columns: 1fr 1fr; } }
+  .other-card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 18px; transition: transform 0.16s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.16s ease; position: relative; overflow: hidden; }
+  .other-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--oc); }
+  .other-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.2); }
+  .other-card:active { transform: scale(0.98); }
+  @media (hover: none), (pointer: coarse) { .other-card:hover { transform: none; } }
+  .other-init { font-weight: 800; font-size: 18px; color: var(--oc); }
+  .other-name { font-size: 13.5px; font-weight: 600; color: var(--fg); margin-top: 6px; line-height: 1.25; }
+  .other-frame { font-size: 11px; color: var(--fg-dim); margin-top: 4px; }
+
+  footer { border-top: 1px solid var(--line); background: rgba(255,255,255,.015); padding: 32px 0; }
+  .foot-inner { font-size: 11.5px; color: var(--fg-dim); line-height: 1.75; max-width: 84ch; }
+  .foot-inner a { color: var(--c); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-brand">Furton Research</a>
+    <a href="../index.html#committee" class="nav-back">← Back to the committee</a>
+  </div>
+</nav>
+
+<header class="profile-hero">
+  <div class="wrap">
+    <div class="ph-grid">
+      <div class="portrait">
+        <div class="portrait-initial">H</div>
+        <div class="portrait-tag">Simulated · primary-source grounded</div>
+      </div>
+      <div>
+        <div class="ph-role">Committee · Cycles &amp; risk</div>
+        <h1 class="ph-name">Howard Marks</h1>
+        <div class="ph-frame">Second-level thinking, market cycles, and the primacy of risk.</div>
+        <div class="ph-grounding">Grounded in <b>Oaktree Capital memos and published writing</b></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap" style="display:contents">
+    <div class="stat">
+      <div class="stat-value">$224B</div>
+      <div class="stat-label">Assets under management at Oaktree Capital, Q1 2026</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">19% net</div>
+      <div class="stat-label">Annualized, after fees, across Oaktree's distressed-debt funds</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">#1</div>
+      <div class="stat-label">Largest distressed-securities investor worldwide</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">Since 1990</div>
+      <div class="stat-label">Oaktree memos published; Buffett says they're the first thing he opens</div>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-eyebrow">The philosophy</div>
+    <h2>You can't predict. You can prepare.</h2>
+    <p>The simulated Marks reasons in cycles. Markets, in his framework, swing between greed and fear in patterns that repeat without ever repeating exactly, and the investor's job is not to forecast the swing but to know where in the cycle they stand and position accordingly. He calls the discipline "second-level thinking": going beyond the obvious first conclusion to ask what is already priced in, what the consensus has missed, and what could go wrong.</p>
+    <div class="pull">"If we avoid the losers, the winners will take care of themselves."</div>
+    <p>Risk, for Marks, is not volatility, it is the probability of permanent loss, and it is highest precisely when it feels lowest, when optimism has pushed prices past value. He prizes a margin of safety, treats price as the ultimate determinant of risk, and is most aggressive when others are fearful and assets are being sold indiscriminately. His is a defensive temperament that wins by losing less.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-eyebrow">How the simulation reasons</div>
+    <h2>The memo writer's voice.</h2>
+    <p>Within the committee, the Marks agent draws on the body of memos he has published for decades. When a company is evaluated, the system retrieves the passages most relevant to the situation, his writing on where a cycle stands, on the danger of crowded optimism, on the difference between a good company and a good investment at a given price.</p>
+    <p>The voice that emerges is the committee's risk conscience: attentive to what could go wrong, suspicious of consensus enthusiasm, and insistent that the price paid, not the quality of the story, determines the return. He is the member most likely to ask whether a thing that everyone agrees is good has already been bid beyond what it is worth.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-eyebrow">Primary sources</div>
+    <h2>What this voice is built from.</h2>
+    <div class="sources">
+      <div class="source-row">
+        <div>
+          <div class="source-title">Oaktree Capital Management, Memos &amp; Commentary</div>
+          <div class="source-detail">Howard Marks's published memos and writing · oaktreecapital.com</div>
+        </div>
+        <div class="source-kind">Primary · memos</div>
+      </div>
+    </div>
+    <p style="margin-top:24px; font-size:14px; color:var(--fg-dim);">Sources are cited as the documented basis for this simulated investor. Furton Research does not reproduce or redistribute their text.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-eyebrow">Role on the committee</div>
+    <div class="role-box">
+      <h2>The risk conscience.</h2>
+      <p>Marks is the committee's macro and risk lens, the member who places a company inside a market cycle and asks what the consensus has already priced in. Where the value members focus on the business itself and the growth member on its trajectory, Marks weighs sentiment, crowding, and the cost of being wrong. He moderates the committee's enthusiasm and supplies its strongest case for patience and caution.</p>
+    </div>
+  </div>
+</section>
+
+<section class="others">
+  <div class="wrap">
+    <div class="others-label">The rest of the committee</div>
+    <div class="others-grid">
+      <a class="other-card" href="buffett.html" style="--oc:#ff6d64">
+        <div class="other-init">W</div>
+        <div class="other-name">Warren Buffett</div>
+        <div class="other-frame">Quality value</div>
+      </a>
+      <a class="other-card" href="greenblatt.html" style="--oc:#4fd08a">
+        <div class="other-init">J</div>
+        <div class="other-name">Joel Greenblatt</div>
+        <div class="other-frame">Quantitative value</div>
+      </a>
+      <a class="other-card" href="wood.html" style="--oc:#b78cff">
+        <div class="other-init">C</div>
+        <div class="other-name">Cathie Wood</div>
+        <div class="other-frame">Disruptive innovation</div>
+      </a>
+      <a class="other-card" href="aschenbrenner.html" style="--oc:#5aa4e0">
+        <div class="other-init">L</div>
+        <div class="other-name">Leopold Aschenbrenner</div>
+        <div class="other-frame">AI &amp; regime shifts</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-inner">
+      The committee's members are language-model simulations grounded in primary sources; they are not the real individuals, do not represent those individuals' views, and do not endorse any holding. Performance figures describe the real investor's historical record and are provided for context, not as a claim about the simulation. Not investment advice. <a href="../index.html">← Furton Research</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

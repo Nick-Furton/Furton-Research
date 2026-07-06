@@ -2,8 +2,9 @@
 # WHITELIST repo. Ignore EVERYTHING by default, then re-include only the small
 # set of safe, publishable source files below. This guarantees that the API key,
 # the copyrighted primary-source libraries / manifests / embeddings, the
-# portfolio data, the website, and all local backups are NEVER committed — even
-# if new files appear in this directory later.
+# private portfolio records, and all local backups are NEVER committed — even
+# if new files appear in this directory later. The public site deploys from
+# /docs (see below); everything else stays out.
 # ─────────────────────────────────────────────────────────────────────────────
 *
 
@@ -18,3 +19,10 @@
 !/furton_tradelog.html
 !/furton_performance.html
 !/furton_capture_positions.py
+
+# The public site, served by GitHub Pages from /docs (moved off Netlify
+# 2026-07-06). Contains ONLY already-public content: the site HTML, the
+# published data files, and the methodology PDF. Private records (holdings/,
+# weekly_records/, screens/, keys, libraries) remain ignored as before.
+!/docs/
+!/docs/**

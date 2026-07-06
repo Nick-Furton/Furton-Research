@@ -1,0 +1,65 @@
+{
+  "date": "2026-07-06",
+  "holdings": [
+    {
+      "ticker": "TRV",
+      "name": "Travelers Cos. Inc.",
+      "committee_weight_pct": 13.19
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "committee_weight_pct": 13.1
+    },
+    {
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 12.7
+    },
+    {
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 11.99
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 10.88
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 7.55
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 6.97
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 5.12
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 4.83
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 4.61
+    },
+    {
+      "ticker": "MMM",
+      "name": "3M Co.",
+      "committee_weight_pct": 4.53
+    },
+    {
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 4.53
+    }
+  ]
+}

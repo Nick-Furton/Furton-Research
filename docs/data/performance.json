@@ -1,0 +1,19 @@
+{
+  "entries": [
+    {
+      "date": "2026-06-23",
+      "account_value": 10000,
+      "dow_level": 51733
+    },
+    {
+      "date": "2026-06-29",
+      "account_value": 10190.07,
+      "dow_level": 52027
+    },
+    {
+      "date": "2026-07-06",
+      "account_value": 10294.42,
+      "dow_level": 52760
+    }
+  ]
+}

@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furton Research · Simulating an Investment Committee</title>
+<meta name="description" content="A public experiment: five expert investors simulated from primary sources deliberate over the Dow 30 and run a real $10,000 portfolio. Live analytics, methodology, and code, published either way.">
+<meta name="theme-color" content="#070b14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%236d7cff'/%3E%3Crect x='31' y='31' width='38' height='38' rx='6' transform='rotate(45 50 50)' fill='%23070b14'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#070b14; --panel:rgba(255,255,255,.035); --panel2:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.08); --text:#e7ebf4; --muted:#8b93a7; --dim:#7d879e;
+  --acc:#6d7cff; --acc2:#38e1ff; --up:#2fd08c; --down:#ff5d73; --warn:#ffb84d;
+  --buffett:#ff6d64; --aschen:#5aa4e0; --marks:#a8c860; --green:#4fd08a; --wood:#b78cff;
+  --mono:'JetBrains Mono',Consolas,monospace;
+  --eo:cubic-bezier(.23,1,.32,1); /* strong ease-out for responsive motion */
+  --maxw:1240px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;color-scheme:dark}
+h1,h2,h3,h4{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.light :focus-visible{outline-color:#077ea3}
+section{scroll-margin-top:76px}
+@media(pointer:coarse){
+  .tab{padding:14px 28px}
+  .bpill{padding:9px 15px}
+}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+body{
+  background:var(--bg); color:var(--text);
+  font:15px/1.6 Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(760px 460px at 12% -8%, rgba(109,124,255,.17), transparent 60%),
+    radial-gradient(680px 420px at 88% -12%, rgba(56,225,255,.10), transparent 60%),
+    radial-gradient(1000px 640px at 50% 118%, rgba(109,124,255,.06), transparent 60%);
+}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(30px,4.5vw,56px)}
+.grad{color:var(--acc2)}
+.pos{color:var(--up)} .neg{color:var(--down)}
+
+/* ───────── nav ───────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,11,20,.72);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:var(--maxw);margin:0 auto;padding:14px clamp(30px,4.5vw,56px);display:flex;align-items:center;gap:12px}
+.mark{width:34px;height:34px;border-radius:10px;flex:none;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-weight:800;font-size:15px;color:#0a0e1a;box-shadow:0 0 20px rgba(109,124,255,.45)}
+.nav-brand{font-weight:800;font-size:15px;letter-spacing:-.01em}
+.nav-brand span{color:var(--acc2)}
+.nav-links{margin-left:auto;display:flex;gap:26px;font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+.nav-links a{color:var(--muted);transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+@media(max-width:900px){.nav-links{display:none}}
+.nav-menu{margin-left:auto;display:none}
+.nav-menu summary{list-style:none;cursor:pointer;width:44px;height:44px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;color:var(--text);transition:border-color .15s ease}
+.nav-menu summary::-webkit-details-marker{display:none}
+.nav-menu summary svg{width:18px;height:18px}
+.nav-menu[open] summary{border-color:var(--acc2)}
+.nav-menu .sheet{position:absolute;top:calc(100% + 8px);left:clamp(30px,4.5vw,56px);right:clamp(30px,4.5vw,56px);background:rgba(10,14,24,.97);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;box-shadow:0 22px 54px -22px rgba(0,0,0,.75)}
+.nav-menu .sheet a{padding:12px 14px;border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.04em;transition:color .15s ease,background-color .15s ease}
+.nav-menu .sheet a:hover{background:var(--panel2);color:var(--text)}
+@media(max-width:900px){.nav-menu{display:block}}
+abbr[title],abbr[data-tip]{text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:var(--dim);cursor:default}
+.light abbr[title],.light abbr[data-tip]{text-decoration-color:#8892ab}
+/* styled definition popover — replaces the native title bubble; same voice as chart tooltips.
+   Vertical padding + negative horizontal margin grow the hover target without moving layout.
+   position:fixed (anchored by placeTip) because the tile labels clip with overflow:hidden. */
+abbr[data-tip]{position:relative;padding:9px 5px;margin:0 -5px}
+abbr[data-tip]::before{
+  content:"";position:fixed;left:var(--tipcx,-9999px);top:var(--tipct,-9999px);transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:rgba(10,14,26,.96);
+  opacity:0;transition:opacity .16s var(--eo);pointer-events:none;z-index:61;
+}
+abbr[data-tip]::after{
+  content:attr(data-tip);position:fixed;left:var(--tipx,-9999px);bottom:var(--tipb,auto);top:auto;
+  transform:translateX(-50%) translateY(4px);
+  width:max-content;max-width:min(250px,calc(100vw - 32px));white-space:normal;
+  background:rgba(10,14,26,.96);color:#c6ccdb;border:1px solid rgba(255,255,255,.12);
+  font:400 12px/1.6 Inter,sans-serif;letter-spacing:0;text-transform:none;text-align:left;
+  padding:9px 12px;border-radius:9px;box-shadow:0 10px 28px -14px rgba(0,0,0,.55);
+  opacity:0;transition:opacity .16s var(--eo),transform .16s var(--eo);pointer-events:none;z-index:61;
+}
+/* flipped below the term when there's no headroom above (set by placeTip) */
+abbr[data-tip][data-flip]::before{border-top-color:transparent;border-bottom-color:rgba(10,14,26,.96)}
+abbr[data-tip][data-flip]::after{bottom:auto;top:var(--tipt,-9999px);transform:translateX(-50%) translateY(-4px)}
+abbr[data-tip]:hover::before,abbr[data-tip]:focus::before{opacity:1}
+abbr[data-tip]:hover::after,abbr[data-tip]:focus::after{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ───────── hero ───────── */
+.hero{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:130px 0 56px;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:44px;align-items:center}
+@media(max-width:960px){.hero-grid{grid-template-columns:1fr}}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc2);margin-bottom:22px}
+.eyebrow::before{content:"";width:30px;height:1px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.hero h1{font-weight:800;font-size:clamp(30px,4.1vw,54px);line-height:1.07;letter-spacing:-.03em;max-width:21ch}
+.hero-sub{margin-top:24px;font-size:clamp(15px,1.4vw,18px);color:var(--muted);max-width:52ch;line-height:1.65}
+.hero-cta{margin-top:34px;display:flex;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:14px 30px;border-radius:99px;font-weight:700;font-size:14.5px;letter-spacing:.01em;transition:transform .16s var(--eo),box-shadow .16s ease,filter .16s ease,border-color .16s ease,color .16s ease;border:1px solid transparent}
+.btn:active{transform:scale(.97)}
+.btn .arr{transition:transform .16s var(--eo);font-weight:800}
+.btn:hover .arr{transform:translateX(4px)}
+.btn-primary{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#0a0e1a;border:none;padding:15px 31px;box-shadow:0 10px 30px -8px rgba(109,124,255,.55)}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:0 14px 36px -8px rgba(109,124,255,.65)}
+.btn-ghost{border-color:rgba(255,255,255,.2);color:var(--text)}
+.btn-ghost:hover{border-color:var(--acc2);color:#fff;transform:translateY(-2px)}
+
+/* committee signature svg */
+.committee-sig{width:100%;max-width:430px;height:auto;justify-self:center;pointer-events:none}
+@media(max-width:960px){.committee-sig{display:none}}
+.node{transform-box:fill-box;transform-origin:center}
+@keyframes float1{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes float2{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+.sig-line{stroke-dasharray:4 5;animation:pulse 3.5s ease-in-out infinite}
+
+/* ───────── shared: tiles / cards / tabs ───────── */
+.tile{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.tile .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font-size:21px;font-weight:700;font-family:var(--mono);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .s{font-size:11.5px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:20px}
+.card h3{display:flow-root;font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+.card h3 small{float:right;color:var(--dim);text-transform:none;letter-spacing:0;font-weight:500}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:1000px){.tiles{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:420px){.tiles{grid-template-columns:1fr}}
+.tabs{display:flex;gap:8px;margin:22px 0 18px;flex-wrap:wrap}
+.tab{padding:12px 28px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);font:600 14.5px Inter,sans-serif;cursor:pointer;transition:color .15s ease,border-color .15s ease,background-color .15s ease}
+.tab:hover{color:var(--text);border-color:rgba(255,255,255,.22)}
+.tab.active{background:linear-gradient(90deg,rgba(109,124,255,.18),rgba(56,225,255,.14));border-color:rgba(109,124,255,.5);color:var(--text)}
+.apanel{display:none}.apanel.active{display:block}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid2 .span2{grid-column:1/-1}
+@media(max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.chartbox{position:relative;height:300px}
+.chartbox.tall{height:340px}.chartbox.short{height:230px}
+.small{font-size:12px;color:var(--muted)}
+.note{margin-top:14px;font-size:12.5px;color:var(--dim);max-width:75ch;line-height:1.65}
+.badge{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);border:1px solid rgba(255,184,77,.4);border-radius:99px;padding:1px 8px;vertical-align:2px;margin-left:6px}
+
+/* benchmark pills */
+.bpills{display:inline-flex;gap:6px;flex-wrap:wrap}
+.bpill{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--muted);font:500 12px Inter,sans-serif;cursor:pointer;transition:color .15s ease,border-color .15s ease,box-shadow .15s ease;text-transform:none;letter-spacing:0}
+.bpill:hover{color:var(--text);border-color:rgba(255,255,255,.25)}
+.bpill .dot{width:8px;height:8px;border-radius:50%;background:var(--dc);opacity:.45;transition:opacity .15s ease,box-shadow .15s ease}
+.bpill.on{border-color:var(--dc);color:var(--text)}
+.bpill.on .dot{opacity:1;box-shadow:0 0 6px var(--dc)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;user-select:none}
+th:first-child,td:first-child{text-align:left}
+th.sortable{cursor:pointer} th.sorted{color:var(--acc2)}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;font-family:var(--mono);font-size:12.5px}
+td:first-child{font-family:Inter,sans-serif;font-weight:600}
+tr:hover td{background:rgba(255,255,255,.02)}
+.wbar{display:inline-block;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc),var(--acc2));vertical-align:middle;margin-right:8px}
+
+/* heatmaps */
+.hm{overflow-x:auto}
+.hm table{width:auto;min-width:100%}
+.hm td{font-size:11.5px;padding:6px 8px;border:1px solid rgba(0,0,0,.25);text-align:center;min-width:52px}
+.hm td:first-child{font-family:var(--mono);color:var(--muted);border:none;min-width:44px}
+.hm .hm-tall{display:none}
+@media(max-width:640px){
+  .hm{overflow-x:visible}
+  .hm .hm-wide{display:none}
+  .hm .hm-tall{display:table;width:100%;min-width:0}
+}
+.corrscroll{overflow-x:auto;padding-bottom:6px}
+.corr{display:grid;gap:2px;font-family:var(--mono);font-size:10px;min-width:640px}
+.corr .cell{aspect-ratio:1;display:grid;place-items:center;border-radius:4px;min-width:0}
+.corr .lab{display:grid;place-items:center;color:var(--muted);font-size:9.5px}
+.legend{display:flex;gap:14px;margin-top:10px;color:var(--dim);font-size:11.5px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* ───────── section scaffolding ───────── */
+section{position:relative}
+.section-pad{padding:96px 0}
+.sec-head{margin-bottom:36px}
+.sec-head h2{font-weight:800;font-size:clamp(26px,3.2vw,42px);letter-spacing:-.03em;line-height:1.1;text-transform:uppercase}
+.sec-head h2 em{font-style:normal;color:var(--acc2)}
+.sec-lead{margin-top:16px;font-size:16px;color:var(--muted);max-width:66ch;line-height:1.7}
+.asof{font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.04em}
+
+/* ───────── target portfolio ───────── */
+.holdings-head{display:grid;grid-template-columns:48px 1fr 220px 84px;gap:18px;padding:0 6px 10px;border-bottom:1px solid rgba(255,255,255,.14);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.holdings-head span:last-child{text-align:right}
+.holding-row{display:grid;grid-template-columns:48px 1fr 220px 84px;gap:18px;align-items:center;padding:13px 6px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
+.holding-row:hover{background:rgba(255,255,255,.025)}
+.holding-rank{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.holding-ticker{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.02em}
+.holding-name{font-size:12px;color:var(--dim)}
+.holding-bar-track{height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.holding-bar-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px;transform:scaleX(0);transform-origin:left;transition:transform .6s var(--eo)}
+.holding-weight{font-family:var(--mono);font-weight:600;font-size:16px;text-align:right;color:var(--acc2)}
+.holdings-empty{padding:44px 20px;text-align:center;color:var(--dim);font-family:var(--mono);font-size:12.5px;border:1px dashed rgba(255,255,255,.14);border-radius:12px}
+@media(max-width:680px){
+  .holding-row,.holdings-head{grid-template-columns:34px 1fr 70px}
+  .holding-bar-track{display:none}
+  .holdings-head span:nth-child(3){display:none}
+}
+
+/* ───────── thesis ───────── */
+.q-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.q-grid{grid-template-columns:1fr}}
+.q-card{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:34px 30px;overflow:hidden}
+.q-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.q-num{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc2)}
+.q-card h4{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:12px 0 10px}
+.q-card p{color:var(--muted);font-size:14.5px;line-height:1.7}
+.q-tag{position:absolute;top:18px;right:20px;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+
+/* ───────── committee ───────── */
+.committee-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+@media(max-width:960px){.committee-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.committee-grid{grid-template-columns:1fr}}
+.inv-card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:22px 18px;transition:transform .18s var(--eo),border-color .18s ease,box-shadow .18s ease;position:relative;overflow:hidden}
+.inv-card:active{transform:scale(.98)}
+.inv-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--c)}
+.inv-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--c) 55%,transparent);box-shadow:0 10px 34px -14px color-mix(in srgb,var(--c) 55%,transparent)}
+.inv-initial{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:18px;color:var(--c);border:1.5px solid var(--c);margin-bottom:14px}
+.inv-name{font-weight:700;font-size:15.5px;line-height:1.2;letter-spacing:-.01em}
+.inv-frame{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.inv-arrow{margin-top:14px;font-size:12px;font-weight:700;color:var(--c);opacity:0;transition:opacity .18s}
+.inv-card:hover .inv-arrow{opacity:1}
+
+/* ───────── process ───────── */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;counter-reset:phase}
+@media(max-width:860px){.flow{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.flow{grid-template-columns:1fr}}
+.flow-step{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:24px 22px;position:relative}
+.flow-step h4{font-size:18px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em}
+.flow-step p{font-size:13.5px;color:var(--muted);line-height:1.65}
+.flow-step::after{content:"→";position:absolute;right:-13px;top:26px;color:var(--dim);font-size:16px;z-index:1}
+.flow-step:last-child::after{display:none}
+@media(max-width:860px){.flow-step::after{display:none}}
+
+/* ───────── research ───────── */
+.res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:860px){.res-grid{grid-template-columns:1fr}}
+.res-card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:28px 26px;display:flex;flex-direction:column;gap:11px;transition:transform .18s var(--eo),border-color .18s ease}
+.res-card:hover{transform:translateY(-4px);border-color:rgba(109,124,255,.45)}
+.res-kind{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc2)}
+.res-card h4{font-size:19px;font-weight:700;line-height:1.25;letter-spacing:-.01em}
+.res-card p{font-size:13.5px;color:var(--muted);line-height:1.65;flex:1}
+.res-link{font-weight:700;font-size:13px;color:var(--acc2)}
+.res-link.disabled{color:var(--dim)}
+
+/* ───────── footer ───────── */
+footer{border-top:1px solid var(--line);padding:64px 0 44px;background:rgba(255,255,255,.015)}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px}
+@media(max-width:760px){.foot-grid{grid-template-columns:1fr;gap:28px}}
+.foot-brand{font-weight:800;font-size:19px}
+.foot-tagline{color:var(--muted);font-size:13px;margin-top:12px;max-width:44ch;line-height:1.65}
+.foot-author{color:var(--dim);font-size:12.5px;margin-top:16px;line-height:1.65}
+.foot-author a{color:var(--muted);transition:color .15s}
+.foot-author a:hover{color:var(--acc2)}
+.foot-col h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.foot-col a{display:block;color:var(--muted);font-size:13px;margin-bottom:9px;transition:color .15s}
+.foot-col a:hover{color:var(--text)}
+.foot-disclaimer{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim);line-height:1.75;max-width:96ch}
+
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s var(--eo),transform .5s var(--eo)}
+.reveal.in{opacity:1;transform:none}
+
+/* touch devices fire :hover on tap, suppress hover-lift motion there */
+@media (hover:none),(pointer:coarse){
+  .btn-primary:hover,.btn-ghost:hover,.inv-card:hover,.res-card:hover{transform:none}
+}
+
+/* ───────── light (paper) sections, alternating rhythm like v1 ───────── */
+.light{background:#edf0f7;color:#131a2e;border-top:1px solid rgba(10,16,32,.06);border-bottom:1px solid rgba(10,16,32,.06)}
+.light .sec-head h2{color:#0e1428}
+.light .sec-head h2 em{color:#077ea3}
+.light .sec-lead{color:#46516d}
+.light .sec-lead strong{color:#0e1428!important}
+.light .sec-lead a{color:#077ea3!important}
+.light .asof{color:#5a6480}
+.light .card{background:#fbfcfe;border-color:rgba(13,20,40,.08);box-shadow:0 14px 34px -22px rgba(13,20,40,.3)}
+.light .holdings-head{color:#8892ab;border-bottom-color:rgba(13,20,40,.16)}
+.light .holding-row{border-bottom-color:rgba(13,20,40,.06)}
+.light .holding-row:hover{background:rgba(13,20,40,.03)}
+.light .holding-ticker{color:#10162a}
+.light .holding-name,.light .holding-rank{color:#5a6480}
+.light .holding-bar-track{background:rgba(13,20,40,.08)}
+.light .holding-weight{color:#077ea3}
+.light .holdings-empty{color:#5a6480;border-color:rgba(13,20,40,.2)}
+.light .inv-card{background:#fbfcfe;border-color:rgba(13,20,40,.08)}
+.light .inv-name{color:#10162a}
+.light .inv-frame{color:#5a6480}
+.light .res-card{background:#fbfcfe;border-color:rgba(13,20,40,.08)}
+.light .res-card h4{color:#10162a}
+.light .res-card p{color:#5a6480}
+.light .res-kind{color:#077ea3}
+.light .res-link{color:#077ea3}
+.light .res-link.disabled{color:#66718c}
+
+/* analytics components on light */
+.light .pos{color:#0e7f51}
+.light .neg{color:#d43550}
+.light .tile{background:#fbfcfe;border-color:rgba(13,20,40,.08);box-shadow:0 10px 26px -20px rgba(13,20,40,.35)}
+.light .tile .k{color:#5a6480}
+.light .tile .s{color:#5a6480}
+.light .card h3{color:#5a6480}
+.light .card h3 small{color:#66718c}
+.light .tab{border-color:rgba(13,20,40,.16);color:#5a6480}
+.light .tab:hover{color:#10162a;border-color:rgba(13,20,40,.34)}
+.light .tab.active{background:linear-gradient(90deg,rgba(69,83,214,.12),rgba(8,152,192,.10));border-color:rgba(69,83,214,.5);color:#10162a}
+.light th{color:#5a6480;border-bottom-color:rgba(13,20,40,.12)}
+.light th.sorted{color:#077ea3}
+.light td{border-bottom-color:rgba(13,20,40,.05)}
+.light tr:hover td{background:rgba(13,20,40,.03)}
+.light .note{color:#5a6480}
+.light .note b{color:#131a2e}
+.light .note a{color:#077ea3!important}
+.light .small{color:#5a6480}
+.light .legend{color:#5a6480}
+.legend b{color:var(--text)}
+.light .legend b{color:#0e1428}
+.light .corr .lab{color:#5a6480}
+.light .bpill{border-color:rgba(13,20,40,.16);color:#5a6480}
+.light .bpill:hover{color:#10162a;border-color:rgba(13,20,40,.36)}
+.light .bpill.on{color:#10162a}
+.light .btn-ghost{background:#fbfcfe;border-color:rgba(13,20,40,.22);color:#131a2e;box-shadow:0 8px 22px -16px rgba(13,20,40,.35)}
+.light .btn-ghost:hover{border-color:#077ea3;color:#077ea3}
+.light .badge{color:#a06a10;border-color:rgba(160,106,16,.45)}
+.light .hm td{border-color:rgba(255,255,255,.7)}
+.light .hm td:first-child{color:#5a6480}
+
+/* thesis + process on light */
+.light .q-card{background:#fbfcfe;border-color:rgba(13,20,40,.08);box-shadow:0 14px 34px -22px rgba(13,20,40,.3)}
+.light .q-card h4{color:#10162a}
+.light .q-card p{color:#5a6480}
+.light .q-num{color:#077ea3}
+.light .q-tag{color:#5a6480;border-color:rgba(13,20,40,.16)}
+.light .flow-step{background:#fbfcfe;border-color:rgba(13,20,40,.08);box-shadow:0 14px 34px -22px rgba(13,20,40,.3)}
+.light .flow-step h4{color:#10162a}
+.light .flow-step p{color:#5a6480}
+.light .flow-step::after{color:#66718c}
+
+/* more-analytics toggle */
+.morebar{display:flex;justify-content:center;margin-top:22px}
+#moreBtn .arr{transition:transform .2s var(--eo)}
+#moreBtn.open .arr{transform:rotate(180deg)}
+#anDeep{display:none;margin-top:8px}
+#anDeep.open{display:block;animation:deepIn .28s var(--eo)}
+@keyframes deepIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="mark">◆</div>
+    <div class="nav-brand">Furton <span>Research</span></div>
+    <div class="nav-links">
+      <a href="#analytics">Analytics</a>
+      <a href="#portfolio">Portfolio</a>
+      <a href="#thesis">Thesis</a>
+      <a href="#committee">Committee</a>
+      <a href="#process">Process</a>
+      <a href="#research">Research</a>
+    </div>
+    <details class="nav-menu">
+      <summary aria-label="Open navigation menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </summary>
+      <div class="sheet">
+        <a href="#analytics">Analytics</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#thesis">Thesis</a>
+        <a href="#committee">Committee</a>
+        <a href="#process">Process</a>
+        <a href="#research">Research</a>
+      </div>
+    </details>
+  </div>
+</nav>
+<script>
+document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.target.closest('a')){const d=e.target.closest('.nav-menu');if(d)d.open=false}});
+</script>
+
+<!-- ════════ HERO ════════ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Public investment research · Est. 2026</div>
+        <h1>Can a committee of expert investors be <span class="grad">simulated from primary sources</span>?</h1>
+        <p class="hero-sub">Five investors rebuilt from their own writing run a real $10,000 portfolio against the Dow 30, in public.</p>
+        <div class="hero-cta">
+          <a href="#analytics" class="btn btn-primary">View the live analytics <span class="arr">→</span></a>
+          <a href="#thesis" class="btn btn-ghost">How it works</a>
+        </div>
+      </div>
+
+      <!-- Signature: five investor nodes converging on a verdict -->
+      <svg class="committee-sig" viewBox="-30 0 500 440" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g class="sig-line" stroke-width="1.2">
+          <line x1="80" y1="70" x2="220" y2="220" stroke="#ff6d64"/>
+          <line x1="372" y1="90" x2="220" y2="220" stroke="#5aa4e0"/>
+          <line x1="56" y1="252" x2="220" y2="220" stroke="#a8c860"/>
+          <line x1="382" y1="300" x2="220" y2="220" stroke="#4fd08a"/>
+          <line x1="180" y1="384" x2="220" y2="220" stroke="#b78cff"/>
+        </g>
+        <g font-family="Inter, system-ui, sans-serif" font-size="8.5" font-weight="600" fill="#e7ebf4" text-anchor="middle">
+          <g class="node" style="animation:float1 5s ease-in-out infinite">
+            <circle cx="80" cy="70" r="26" fill="#0d1322" stroke="#ff6d64" stroke-width="1.5"/>
+            <text x="80" y="68">Warren</text><text x="80" y="78">Buffett</text>
+          </g>
+          <g class="node" style="animation:float2 6s ease-in-out infinite">
+            <circle cx="372" cy="90" r="26" fill="#0d1322" stroke="#5aa4e0" stroke-width="1.5"/>
+            <text x="372" y="88">Leopold</text><text x="372" y="98">Aschenbr.</text>
+          </g>
+          <g class="node" style="animation:float2 5.5s ease-in-out infinite">
+            <circle cx="56" cy="252" r="26" fill="#0d1322" stroke="#a8c860" stroke-width="1.5"/>
+            <text x="56" y="250">Howard</text><text x="56" y="260">Marks</text>
+          </g>
+          <g class="node" style="animation:float1 6.5s ease-in-out infinite">
+            <circle cx="382" cy="300" r="26" fill="#0d1322" stroke="#4fd08a" stroke-width="1.5"/>
+            <text x="382" y="298">Joel</text><text x="382" y="308">Greenblatt</text>
+          </g>
+          <g class="node" style="animation:float2 5.2s ease-in-out infinite">
+            <circle cx="180" cy="384" r="26" fill="#0d1322" stroke="#b78cff" stroke-width="1.5"/>
+            <text x="180" y="382">Cathie</text><text x="180" y="392">Wood</text>
+          </g>
+        </g>
+        <circle cx="220" cy="220" r="40" fill="#070b14" stroke="#6d7cff" stroke-width="1.5"/>
+        <circle cx="220" cy="220" r="40" fill="none" stroke="#38e1ff" stroke-width="1.5" opacity=".35" style="animation:pulse 3s ease-in-out infinite"/>
+        <text x="220" y="216" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b93a7" letter-spacing="1">VERDICT</text>
+        <text x="220" y="233" text-anchor="middle" font-family="Inter, sans-serif" font-size="15" font-weight="800" fill="#38e1ff">BUY</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- ════════ LIVE ANALYTICS ════════ -->
+<section id="analytics" class="section-pad light">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Committee against <em>the Dow</em></h2>
+      <p class="sec-lead">A real $10,000 account runs the committee's decisions. Every week the portfolio value is recorded against the Dow Jones Industrial Average from a common baseline; the analytics below reconstruct the account day by day from the project's own position records and free daily market data. This is one line of evidence, not the verdict on the project.</p>
+      <p class="asof" id="anAsOf" style="margin-top:14px">Loading analytics…</p>
+    </div>
+
+    <div class="tiles" id="anTiles"></div>
+
+    <div id="anEmpty" class="holdings-empty" style="display:none;margin-top:20px">
+      Full analytics publish with the next weekly update; the headline figures above track the latest public record.
+    </div>
+
+    <!-- Always visible: the headline chart -->
+    <div class="card" id="growthCard" style="margin-top:14px;display:none">
+      <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">Growth of $10,000
+        <small style="float:none;margin-right:auto">daily closes, since inception</small>
+        <span class="bpills">
+          <button class="bpill on" data-b="dow" style="--dc:#e09a2f"><span class="dot"></span>Dow 30</button>
+          <button class="bpill" data-b="spy" style="--dc:#7c86a0"><span class="dot"></span>S&amp;P 500</button>
+        </span></h3>
+      <div class="chartbox tall"><canvas id="c-growth"></canvas></div>
+      <p class="note">The committee line is total account value (dividends land in cash and are redeployed at the next rebalance) while the Dow price index excludes dividends, giving the headline a small structural tailwind. This is disclosed rather than adjusted; the weekly public record in <b>Record &amp; Notes</b> is the audited baseline.</p>
+    </div>
+
+    <div class="morebar">
+      <button class="btn btn-ghost" id="moreBtn" style="display:none">More analytics <span class="arr">▾</span></button>
+    </div>
+
+    <!-- Collapsed by default: the full dashboard -->
+    <div id="anDeep">
+    <div class="tiles" id="anTiles2" style="margin-top:6px"></div>
+
+    <div class="tabs" id="anTabs">
+      <button class="tab active" data-t="overview">Overview</button>
+      <button class="tab" data-t="risk">Risk &amp; Volatility</button>
+      <button class="tab" data-t="positions">Positions</button>
+      <button class="tab" data-t="record">Record &amp; Notes</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="apanel active" id="ap-overview">
+      <div class="grid2">
+        <div class="card"><h3>Account value <small>▲ = weekly public record</small></h3>
+          <div class="chartbox"><canvas id="c-value"></canvas></div></div>
+        <div class="card"><h3>Allocation</h3>
+          <div class="chartbox"><canvas id="c-alloc"></canvas></div></div>
+        <div class="card span2"><h3>Monthly returns <small>%</small></h3>
+          <div class="hm" id="hm-monthly"></div></div>
+      </div>
+    </div>
+
+    <!-- Risk -->
+    <div class="apanel" id="ap-risk">
+      <div class="tiles" id="riskTiles"></div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="card span2"><h3>Drawdown <small>% below prior peak, live account</small></h3>
+          <div class="chartbox short"><canvas id="c-dd"></canvas></div></div>
+        <div class="card"><h3>Rolling 30-day volatility <small>current weights over trailing year, annualized %</small></h3>
+          <div class="chartbox"><canvas id="c-rvol"></canvas></div></div>
+        <div class="card"><h3>Daily return distribution <small id="var-note"></small></h3>
+          <div class="chartbox"><canvas id="c-hist"></canvas></div></div>
+        <div class="card span2"><h3>Holding correlations <small>daily returns, trailing year</small></h3>
+          <div class="corrscroll" id="corrwrap"></div>
+          <div class="legend"><span><i style="background:#3a6dd8"></i>−1 diversifying</span><span><i style="background:#1d2436"></i>0</span><span><i style="background:#e0504f"></i>+1 moves together</span><span id="corr-avg"></span></div>
+        </div>
+      </div>
+      <p class="note" id="modeledNote"></p>
+    </div>
+
+    <!-- Positions -->
+    <div class="apanel" id="ap-positions">
+      <div class="card"><h3>Filled positions <small>click a column to sort</small></h3>
+        <div style="overflow-x:auto"><table id="postable"></table></div>
+        <p class="note">These are the account's actual filled positions, reconciled weekly against the brokerage's own export. The committee's conviction-weighted <a href="#portfolio" style="color:var(--acc2)">target weights</a> are published separately; fills drift from targets with market movement between rebalances.</p>
+      </div>
+    </div>
+
+    <!-- Record -->
+    <div class="apanel" id="ap-record">
+      <div class="grid2">
+        <div class="card"><h3>Weekly public record <small>vs close-based reconstruction</small></h3>
+          <div style="overflow-x:auto"><table id="rectable"></table></div>
+          <p class="note">The weekly record captures the account intraday; the engine values are end-of-day closes, so small deltas between the two are expected and shown, not hidden.</p>
+        </div>
+        <div class="card"><h3>Coverage</h3><div id="coverage" class="small" style="font-size:13px;line-height:2.1"></div></div>
+        <div class="card span2"><h3>Engine notes</h3><div id="notes" class="small" style="line-height:1.9"></div></div>
+      </div>
+    </div>
+    </div><!-- /anDeep -->
+  </div>
+</section>
+
+<!-- ════════ TARGET PORTFOLIO ════════ -->
+<section id="portfolio" class="section-pad">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>The committee's <em>target weights</em>.</h2>
+      <p class="sec-lead">These are the committee's <strong style="color:var(--text)">target weights</strong>: conviction-weighted from the latest screen, not the live brokerage balances. Buys are sized in proportion to conviction; the committee is long-only by construction. The actual filled positions (shares and market value) are tracked in the <a href="#analytics" style="color:var(--acc2)">analytics</a> above and reconciled against these targets.</p>
+    </div>
+    <div class="card">
+      <div id="holdingsWrap">
+        <div class="holdings-empty">Holdings will appear here once the first weekly portfolio is published.</div>
+      </div>
+      <div class="asof" id="holdingsAsOf" style="margin-top:16px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ THESIS ════════ -->
+<section id="thesis" class="section-pad light">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>What this project <em>actually tests</em>.</h2>
+    </div>
+    <div class="q-grid">
+      <div class="q-card">
+        <span class="q-tag">Primary</span>
+        <div class="q-num">Question 01</div>
+        <h4>Can distinct expert reasoning be simulated from primary sources?</h4>
+        <p>Each investor is reconstructed only from their own writing: letters, books, memos, and reports. The question is whether a language model, grounded that way, reproduces a coherent and recognizable investment mind, and whether five of them can genuinely deliberate rather than simply average.</p>
+      </div>
+      <div class="q-card">
+        <span class="q-tag">Secondary</span>
+        <div class="q-num">Question 02</div>
+        <h4>Does the simulated committee form a viable strategy?</h4>
+        <p>If the simulation holds, does the committee's decision-making translate into investment decisions worth acting on? A real $10,000 portfolio, benchmarked against the Dow 30 it selects from, supplies the evidence, measured over time rather than declared in advance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ COMMITTEE ════════ -->
+<section id="committee" class="section-pad">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Five investors, <em>five frameworks</em>, grounded in their own words.</h2>
+      <p class="sec-lead">Chosen to span complementary and often conflicting philosophies, so that genuine disagreement carries information. Each is simulated exclusively from primary sources.</p>
+    </div>
+    <div class="committee-grid">
+      <a class="inv-card" href="investors/buffett.html" style="--c:var(--buffett)">
+        <div class="inv-initial">W</div>
+        <div class="inv-name">Warren Buffett</div>
+        <div class="inv-frame">Quality value, durable moats, owner earnings</div>
+        <div class="inv-arrow">Profile →</div>
+      </a>
+      <a class="inv-card" href="investors/marks.html" style="--c:var(--marks)">
+        <div class="inv-initial">H</div>
+        <div class="inv-name">Howard Marks</div>
+        <div class="inv-frame">Market cycles, risk, second-level thinking</div>
+        <div class="inv-arrow">Profile →</div>
+      </a>
+      <a class="inv-card" href="investors/greenblatt.html" style="--c:var(--green)">
+        <div class="inv-initial">J</div>
+        <div class="inv-name">Joel Greenblatt</div>
+        <div class="inv-frame">Quantitative value, the magic formula</div>
+        <div class="inv-arrow">Profile →</div>
+      </a>
+      <a class="inv-card" href="investors/wood.html" style="--c:var(--wood)">
+        <div class="inv-initial">C</div>
+        <div class="inv-name">Cathie Wood</div>
+        <div class="inv-frame">Disruptive innovation, exponential cost curves</div>
+        <div class="inv-arrow">Profile →</div>
+      </a>
+      <a class="inv-card" href="investors/aschenbrenner.html" style="--c:var(--aschen)">
+        <div class="inv-initial">L</div>
+        <div class="inv-name">Leopold Aschenbrenner</div>
+        <div class="inv-frame">AI infrastructure, regime shifts, scaling</div>
+        <div class="inv-arrow">Profile →</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ PROCESS ════════ -->
+<section id="process" class="section-pad light">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>One evaluation, <em>four phases</em>.</h2>
+      <p class="sec-lead">The engine separates independent judgment from social influence, so the committee deliberates rather than merely polls.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step">
+          <h4>Enrich</h4>
+        <p>Live market data on the security is gathered and shaped into a structured investment brief.</p>
+      </div>
+      <div class="flow-step">
+          <h4>Blind vote</h4>
+        <p>Each investor issues an independent verdict and conviction, without seeing any colleague's view.</p>
+      </div>
+      <div class="flow-step">
+          <h4>Deliberate</h4>
+        <p>Members see each other's positions and respond to the sharpest disagreement, revising if warranted.</p>
+      </div>
+      <div class="flow-step">
+          <h4>Synthesize</h4>
+        <p>A secretary writes the official committee statement: the verdict, the carrying argument, and the dissent.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ RESEARCH ════════ -->
+<section id="research" class="section-pad">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Open <em>by default</em>.</h2>
+      <p class="sec-lead">The method, the source, and the findings are published so the work can be read, checked, and challenged.</p>
+    </div>
+    <div class="res-grid">
+      <div class="res-card">
+        <div class="res-kind">Methodology Paper</div>
+        <h4>Simulating a Committee of Expert Investors</h4>
+        <p>The full apparatus: libraries, the committee engine, retrieval grounding, the cost economics, and the portfolio process. Published before results, against a fixed method.</p>
+        <a class="res-link" href="papers/furton_methodology.pdf">Read the paper →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-kind">Source &amp; Methodology</div>
+        <h4>The code behind the committee</h4>
+        <p>The engine, retrieval pipeline, and tooling, published as a public GitHub repository for transparency and scrutiny. No API keys and no copyrighted corpora are included; the method is documented so it can be read and checked.</p>
+        <a class="res-link" href="https://github.com/Nick-Furton/Furton-Research" target="_blank" rel="noopener">View the code on GitHub →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-kind">Ongoing Analysis</div>
+        <h4>Is the strategy valid?</h4>
+        <p>Future write-ups examining fidelity of the simulation, the committee's structural tilts, and whether performance holds up to scrutiny over time.</p>
+        <span class="res-link disabled" aria-disabled="true">Forthcoming</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ FOOTER ════════ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand">Furton <span class="grad">Research</span></div>
+        <p class="foot-tagline">A public micro-investment research project assessing whether a committee of expert investors can be simulated, and whether the simulation can invest.</p>
+        <p class="foot-author">Nick Furton · Ross School of Business, University of Michigan<br><a href="mailto:nicholas@furton.com">nicholas@furton.com</a> · <a href="https://www.linkedin.com/in/nick-furton-6b8090420/" target="_blank" rel="noopener">LinkedIn</a></p>
+      </div>
+      <div class="foot-col">
+        <h5>Explore</h5>
+        <a href="#analytics">Live analytics</a>
+        <a href="#portfolio">Target portfolio</a>
+        <a href="#thesis">The thesis</a>
+        <a href="#committee">The committee</a>
+        <a href="#process">The process</a>
+      </div>
+      <div class="foot-col">
+        <h5>Research</h5>
+        <a href="papers/furton_methodology.pdf">Methodology paper</a>
+        <a href="https://github.com/Nick-Furton/Furton-Research" target="_blank" rel="noopener">Code on GitHub</a>
+        <a href="#research">Ongoing analysis</a>
+      </div>
+    </div>
+    <div class="foot-disclaimer">
+      Furton Research is a public research project, not investment advice. The committee's members are language-model simulations grounded in primary sources; they are not the real individuals, do not represent those individuals' views, and do not endorse any holding. Simulated outputs are not recommendations. Nothing here is an offer to buy or sell any security. Analytics are computed from the project's own records and free daily market data and may contain small reconstruction errors; the weekly public record is the audited baseline. © 2026 Furton Research.
+    </div>
+  </div>
+</footer>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const state = { charts:{}, an:null, sortKey:'value', sortDir:-1, bench:{dow:true, spy:false} };
+const BENCH_KEYS = ['dow','spy'];
+
+const money = (v,dec=2)=> v==null?'-':(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const money0 = v => money(v, Math.abs(v)>=10000?0:2);
+const pct = (v,signed=false)=> v==null?'-':(signed&&v>0?'+':'')+v.toFixed(2)+'%';
+const num = (v,d=2)=> v==null?'-':v.toFixed(d);
+const cls = v => v==null?'':v>=0?'pos':'neg';
+const tile = (k,v,s,colorBy)=>{
+  const c = colorBy===undefined?'':cls(colorBy);
+  return `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s||''}</div></div>`;
+};
+
+/* ---------- charts ---------- */
+function mkChart(id,cfg){ if(state.charts[id]) state.charts[id].destroy(); state.charts[id]=new Chart($(id),cfg); }
+function baseOpts(extra){
+  return Object.assign({
+    responsive:true, maintainAspectRatio:false, animation:{duration:400},
+    interaction:{mode:'index', intersect:false},
+    plugins:{ legend:{labels:{color:'#8b93a7',boxWidth:14,boxHeight:3,font:{size:12}}},
+      tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10} },
+    scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11}},grid:{color:'rgba(13,20,40,.06)'}},
+      y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'}},grid:{color:'rgba(13,20,40,.07)'}}
+    }
+  }, extra||{});
+}
+function grad(ctx,rgb,a1,a2){
+  const g=ctx.createLinearGradient(0,0,0,ctx.canvas.clientHeight||300);
+  g.addColorStop(0,`rgba(${rgb},${a1})`); g.addColorStop(1,`rgba(${rgb},${a2})`);
+  return g;
+}
+/* Tapping a chart pins its tooltip (touch fires no mouseout to clear it).
+   Any press outside that canvas dismisses it. */
+document.addEventListener('pointerdown', e => {
+  for (const id in state.charts) {
+    const ch = state.charts[id];
+    if (!ch || !ch.canvas || e.target === ch.canvas) continue;
+    const stuck = ch.getActiveElements().length ||
+                  (ch.tooltip && ch.tooltip.getActiveElements().length);
+    if (stuck) {
+      ch.tooltip.setActiveElements([], {x:0, y:0});
+      ch.setActiveElements([]);
+      ch.update();
+    }
+  }
+}, {passive:true});
+
+/* Quantitative-term definitions: strip the native title attribute so the OS
+   bubble (and its help cursor) never appears; the styled abbr[data-tip]
+   popover takes over, reachable by hover, keyboard focus, or tap. */
+const upgradeAbbr = a => { a.dataset.tip = a.getAttribute('title'); a.removeAttribute('title'); a.tabIndex = 0; };
+const sweepAbbrs = () => document.querySelectorAll('abbr[title]').forEach(upgradeAbbr);
+new MutationObserver(sweepAbbrs).observe(document.body, {childList:true, subtree:true});
+sweepAbbrs();
+/* Anchor the fixed-position popover to the hovered term: clamp its center so
+   it never clips at the viewport edge, and flip it below the term when there
+   is no headroom above. The caret stays centered on the term itself. */
+const placeTip = a => {
+  const r = a.getBoundingClientRect();
+  const half = Math.min(250, innerWidth - 32) / 2;
+  const c = r.left + r.width / 2;
+  const x = Math.max(16 + half, Math.min(innerWidth - 16 - half, c));
+  a.style.setProperty('--tipx', x.toFixed(1) + 'px');
+  a.style.setProperty('--tipcx', c.toFixed(1) + 'px');
+  if (r.top < 150) {
+    a.dataset.flip = '1';
+    a.style.setProperty('--tipt', (r.bottom + 2).toFixed(1) + 'px');
+    a.style.setProperty('--tipct', (r.bottom - 7).toFixed(1) + 'px');
+  } else {
+    delete a.dataset.flip;
+    a.style.setProperty('--tipb', (innerHeight - r.top + 2).toFixed(1) + 'px');
+    a.style.setProperty('--tipct', (r.top - 3).toFixed(1) + 'px');
+  }
+};
+document.addEventListener('pointerover', e => { if (e.target.matches?.('abbr[data-tip]')) placeTip(e.target); }, true);
+document.addEventListener('focusin',    e => { if (e.target.matches?.('abbr[data-tip]')) placeTip(e.target); }, true);
+
+/* ---------- data load ---------- */
+async function getJSON(path){
+  try{ const r = await fetch(path,{cache:'no-store'}); if(r.ok) return await r.json(); }catch(e){}
+  return null;
+}
+
+async function boot(){
+  const [an, perf, holdings] = await Promise.all([
+    getJSON('data/analytics.json'), getJSON('data/performance.json'), getJSON('data/holdings.json')]);
+  state.an = an;
+  renderTargets(holdings);
+  if (an && an.series && an.series.dates.length > 1 && typeof Chart !== 'undefined'){
+    renderAnalytics(an);
+  } else {
+    renderWeeklyFallback(perf);
+  }
+}
+
+/* ---------- full analytics ---------- */
+function renderAnalytics(d){
+  const h = d.headline, m = d.modeled, s = d.series;
+  $('anAsOf').textContent = `${d.period.start} → ${d.period.end} / ${d.period.trading_days} trading days / reconstructed daily from position records + market closes`;
+  $('growthCard').style.display='block';
+  $('moreBtn').style.display='inline-flex';
+  const young = d.young ? '<span class="badge">young track</span>' : '';
+
+  /* the essentials: what the project is actually measuring */
+  $('anTiles').innerHTML = [
+    tile('Portfolio value', money0(h.value), `cash ${money(h.cash)} (${num(h.cash_pct,2)}%)`),
+    tile('Committee return', pct(h.ret_total,true), `vs Dow ${pct(h.ret_dow,true)} same period`, h.ret_total),
+    tile('Alpha vs Dow', h.alpha_pts==null?'-':(h.alpha_pts>0?'+':'')+h.alpha_pts.toFixed(2)+' pts', 'the headline figure', h.alpha_pts),
+    tile('Max drawdown', pct(h.max_dd), `${h.max_dd_peak||''} → ${h.max_dd_trough||''}`, h.max_dd),
+  ].join('');
+
+  /* the rest lives behind the More-analytics toggle */
+  $('anTiles2').innerHTML = [
+    tile('Total gain', money0(h.gain), `on ${money0(h.contributed)} contributed`, h.gain),
+    tile('Volatility'+young, h.vol_live==null?'-':pct(h.vol_live), 'annualized, live daily basis'),
+    tile('<abbr title="Return per unit of total volatility; higher is better, &gt;1 is strong">Sharpe</abbr>'+young, num(h.sharpe_live), `<abbr title="Return per unit of downside volatility only — ignores upside swings">Sortino</abbr> ${num(h.sortino_live)}`, h.sharpe_live),
+    tile('Beta vs S&P 500', num(m.beta_spy), `corr ${num(m.corr_spy)} · beta vs Dow ${num(m.beta_dow)}`),
+  ].join('');
+
+  /* growth of $10,000 (index series is base-100; scale to dollars) */
+  const toDollars = a => (a||[]).map(v=>v==null?null:v*100);
+  const ctxG = $('c-growth').getContext('2d');
+  const benchData = { dow:toDollars(s.bench_dow), spy:toDollars(s.bench_spy) };
+  const benchStyle = { dow:[d.dow_label||'Dow 30','#e09a2f',[2,3]], spy:['S&P 500 (SPY)','#7c86a0',[5,4]] };
+  mkChart('c-growth',{type:'line',
+    data:{labels:s.dates,datasets:[
+      {label:'Committee',data:toDollars(s.index),borderColor:'#6d7cff',backgroundColor:grad(ctxG,'109,124,255',.25,0),fill:true,borderWidth:2,pointRadius:s.dates.length<30?2.5:0,tension:.15},
+      ...BENCH_KEYS.map(k=>({label:benchStyle[k][0],data:benchData[k],borderColor:benchStyle[k][1],
+        borderWidth:1.5,borderDash:benchStyle[k][2],pointRadius:0,fill:false,tension:.15,hidden:!state.bench[k]})),
+    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10,callbacks:{label:c=>` ${c.dataset.label}: ${money(c.parsed.y)}`}}},scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11}},grid:{color:'rgba(13,20,40,.06)'}},
+      y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'},callback:v=>'$'+v.toLocaleString('en-US')},grid:{color:'rgba(13,20,40,.07)'}}
+    }})});
+  document.querySelectorAll('.bpill').forEach(b=>{
+    const k=b.dataset.b;
+    b.style.display = (benchData[k]||[]).some(v=>v!=null)?'':'none';
+    b.classList.toggle('on', !!state.bench[k]);
+  });
+
+  /* monthly heatmap — wide grid on desktop; transposed (months as rows) on
+     phones so the live months are visible without sideways scrolling */
+  const years = Object.keys(d.monthly||{}).sort();
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mval=(y,mo)=>d.monthly[y][mo] ?? d.monthly[y][String(mo)];
+  const cell=v=>{
+    if(v==null) return '<td style="background:transparent;color:#b6bdd0">·</td>';
+    const a=Math.min(.85,Math.abs(v)/8+.08);
+    const bg=v>=0?`rgba(47,208,140,${a})`:`rgba(255,93,115,${a})`;
+    return `<td style="background:${bg};color:${Math.abs(v)>4?'#0a0e1a':'#17203a'}">${v>0?'+':''}${v.toFixed(1)}</td>`;
+  };
+  const hdr=t=>`<td style="color:#5a6480;border:none">${t}</td>`;
+  const ytot={};
+  for(const y of years){
+    let comp=1, any=false;
+    for(let mo=1;mo<=12;mo++){const v=mval(y,mo); if(v!=null){any=true; comp*=1+v/100;}}
+    ytot[y]=any?(comp-1)*100:null;
+  }
+  const ycell=yv=>yv==null?'<td>·</td>':`<td class="${yv>=0?'pos':'neg'}" style="font-weight:700">${yv>0?'+':''}${yv.toFixed(1)}</td>`;
+  let wide='<table class="hm-wide"><tr><td></td>'+MO.map(hdr).join('')+hdr('Year')+'</tr>';
+  for(const y of years){
+    wide+=`<tr><td>${y}</td>`;
+    for(let mo=1;mo<=12;mo++) wide+=cell(mval(y,mo));
+    wide+=ycell(ytot[y])+'</tr>';
+  }
+  wide+='</table>';
+  const live=[]; for(let mo=1;mo<=12;mo++) if(years.some(y=>mval(y,mo)!=null)) live.push(mo);
+  let tall='<table class="hm-tall"><tr><td></td>'+years.map(hdr).join('')+'</tr>';
+  for(const mo of live)
+    tall+=`<tr><td>${MO[mo-1]}</td>`+years.map(y=>cell(mval(y,mo))).join('')+'</tr>';
+  tall+='<tr><td>Year</td>'+years.map(y=>ycell(ytot[y])).join('')+'</tr></table>';
+  $('hm-monthly').innerHTML=wide+tall;
+
+  renderRisk(d); renderPositions(d); renderRecord(d);
+}
+
+/* Charts inside the collapsed area are created lazily, when their container
+   becomes visible, Chart.js cannot size a canvas inside display:none. */
+function renderOverviewCharts(d){
+  const h = d.headline, s = d.series;
+  const ctxV = $('c-value').getContext('2d');
+  mkChart('c-value',{type:'line',
+    data:{labels:s.dates,datasets:[
+      {label:'Value',data:s.value,borderColor:'#0ea5c8',backgroundColor:grad(ctxV,'14,165,200',.18,0),fill:true,borderWidth:2,pointRadius:s.dates.length<30?2.5:0,tension:.15},
+    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+money(c.parsed.y)}}}})});
+
+  const pos = d.positions.filter(p=>p.value>0);
+  const palette=['#6d7cff','#38e1ff','#2fd08c','#ffb84d','#ff5d73','#b78cff','#5ad0b1','#f08fb7','#8fb7f0','#d0c05a','#7c8ca6','#4fe0e0','#e08f4f','#9fe05a','#e05ad0','#5a9fe0','#c6ccdb','#6dcf9f'];
+  mkChart('c-alloc',{type:'doughnut',
+    data:{labels:pos.map(p=>p.symbol).concat(['Cash']),
+      datasets:[{data:pos.map(p=>p.value).concat([h.cash]),
+        backgroundColor:pos.map((_,i)=>palette[i%palette.length]).concat(['#aab2c6']),
+        borderColor:'#fbfcfe',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{color:'#5a6480',boxWidth:10,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${money(c.parsed)} (${(100*c.parsed/h.value).toFixed(1)}%)`}}}}});
+}
+
+function renderRiskCharts(d){
+  const s = d.series;
+  const ctxD=$('c-dd').getContext('2d');
+  mkChart('c-dd',{type:'line',
+    data:{labels:s.dates,datasets:[{label:'Drawdown %',data:s.underwater,
+      borderColor:'#ff5d73',backgroundColor:grad(ctxD,'255,93,115',.05,.35),fill:'origin',borderWidth:1.5,pointRadius:s.dates.length<30?2:0,tension:.1}]},
+    options:baseOpts({plugins:{legend:{display:false}}})});
+
+  /* half-width card: full ISO dates collide at maxRotation:0, so ticks are
+     compact month-year labels and fewer of them */
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  mkChart('c-rvol',{type:'line',
+    data:{labels:s.rolling_vol.dates,datasets:[{label:'30d vol (ann.)',data:s.rolling_vol.vals,
+      borderColor:'#0ea5c8',borderWidth:2,pointRadius:0,tension:.2,fill:false}]},
+    options:baseOpts({plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:6,maxRotation:0,font:{size:11},
+        callback:function(v){const l=this.getLabelForValue(v)||'';const p=l.split('-');
+          return p.length>1?MON[+p[1]-1]+" '"+p[0].slice(2):l;}},
+        grid:{color:'rgba(13,20,40,.06)'}},
+      y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'}},grid:{color:'rgba(13,20,40,.07)'}}
+    }})});
+
+  const hg=d.histogram;
+  $('var-note').textContent = hg.var95!=null?`current weights, 1y · red bars ≤ VaR (${hg.var95.toFixed(2)}%)`:'current weights, trailing year';
+  mkChart('c-hist',{type:'bar',
+    data:{labels:hg.bins.map(b=>b.toFixed(1)+'%'),datasets:[{label:'days',data:hg.counts,
+      backgroundColor:hg.bins.map(b=>hg.var95!=null&&b<=hg.var95?'rgba(255,93,115,.8)':'rgba(109,124,255,.65)'),
+      borderRadius:2}]},
+    options:baseOpts({plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:10}},grid:{display:false}},
+      y:{ticks:{color:'#5a6480',font:{size:11}},grid:{color:'rgba(13,20,40,.07)'}}}})});
+}
+
+function renderPanelCharts(name){
+  if(!state.an) return;
+  if(name==='overview') renderOverviewCharts(state.an);
+  else if(name==='risk') renderRiskCharts(state.an);
+}
+
+function renderRisk(d){
+  const h=d.headline, m=d.modeled, s=d.series;
+  $('riskTiles').innerHTML=[
+    tile('<abbr title="Value at Risk — the one-day loss the portfolio should stay under on 95% of days">VaR</abbr> 95% (1 day)', pct(m.var95), m.var95_dollar!=null?`≈ ${money0(m.var95_dollar)} on a bad day`:''),
+    tile('<abbr title="Conditional VaR (expected shortfall) — the average loss on the worst 5% of days">CVaR</abbr> 95%', pct(m.cvar95), 'avg of worst 5% days'),
+    tile('Longest underwater', (h.longest_underwater_days||0)+' days', 'live account, below prior peak'),
+    tile('<abbr title="Share of the market’s up-moves vs down-moves the portfolio captured; &lt;100 down is defensive">Up / down capture</abbr>', `${num(m.up_capture,0)} / ${num(m.down_capture,0)}`, '% of S&P moves captured (modeled)'),
+    tile('Concentration', h.eff_n==null?'-':num(h.eff_n,1)+' <abbr title="Effective number of names — how many equal-weighted holdings would give this much concentration">eff.</abbr> names', `top 5 = ${num(h.top5_pct,0)}% · <abbr title="Herfindahl–Hirschman Index — 0 = perfectly diversified, 1 = a single holding">HHI</abbr> ${num(h.hhi,3)}`),
+    tile('Best day', h.best_day?pct(h.best_day.ret,true):'-', h.best_day?h.best_day.date:'', h.best_day?h.best_day.ret:undefined),
+    tile('Worst day', h.worst_day?pct(h.worst_day.ret,true):'-', h.worst_day?h.worst_day.date:'', h.worst_day?h.worst_day.ret:undefined),
+    tile('Modeled <abbr title="Return per unit of total volatility; higher is better, &gt;1 is strong">Sharpe</abbr> (1y)', num(m.sharpe), `vol ${pct(m.vol)} · current weights, trailing year`, m.sharpe),
+  ].join('');
+  $('modeledNote').textContent = 'Modeled figures apply the current portfolio weights to the trailing year of daily market data: the risk profile of the book as constructed, not a live track record. Live figures come from the account’s own daily series and will stay noisy until the track lengthens.';
+
+  /* correlation heatmap */
+  const c=d.correlation, wrap=$('corrwrap');
+  if(!c||!c.symbols.length){wrap.innerHTML='<div class="small">Not enough overlapping history for a correlation matrix.</div>';return;}
+  const n=c.symbols.length;
+  let html=`<div class="corr" style="grid-template-columns:52px repeat(${n},minmax(26px,1fr))">`;
+  html+='<div></div>'+c.symbols.map(sym=>`<div class="lab">${sym}</div>`).join('');
+  for(let i=0;i<n;i++){
+    html+=`<div class="lab" style="justify-self:end;padding-right:6px">${c.symbols[i]}</div>`;
+    for(let j=0;j<n;j++){
+      const v=c.cells[i][j];
+      if(v==null){html+='<div class="cell" style="background:#e8ecf5;color:#9aa2b8">·</div>';continue;}
+      let bg,col='#17203a';
+      if(i===j){bg='#dfe4f0';col='#8892ab';}
+      else if(v>=0){const a=Math.min(.92,v);bg=`rgba(224,80,79,${a*.95+.05})`;if(v>.55)col='#f2f5fb';}
+      else{const a=Math.min(.92,-v);bg=`rgba(58,109,216,${a*.95+.05})`;if(-v>.55)col='#f2f5fb';}
+      html+=`<div class="cell" style="background:${bg};color:${col}" title="${c.symbols[i]}×${c.symbols[j]}: ${v}">${i===j?'':v.toFixed(2).replace('0.','.')}</div>`;
+    }
+  }
+  wrap.innerHTML=html+'</div>';
+  $('corr-avg').innerHTML=c.avg!=null?`avg pairwise correlation: <b>${c.avg}</b>`:'';
+}
+
+const POSCOLS=[
+  ['symbol','Symbol'],['shares','Shares'],['fill','Fill'],['price','Price'],['value','Value'],
+  ['weight','Weight'],['cost','Cost'],['unreal','Unreal. P&L'],['unreal_pct','Unreal. %'],
+  ['vol1y','Vol 1y'],['beta1y','Beta 1y'],
+];
+function renderPositions(d){
+  const held=d.positions;
+  const maxW=Math.max(...held.map(p=>p.weight||0),1);
+  const rows=[...held].sort((a,b)=>{
+    const k=state.sortKey,x=a[k],y=b[k];
+    if(x==null)return 1; if(y==null)return -1;
+    return (typeof x==='string'?x.localeCompare(y):x-y)*state.sortDir;
+  });
+  let html='<tr>'+POSCOLS.map(([k,lbl])=>`<th scope="col" data-k="${k}" class="sortable ${state.sortKey===k?'sorted':''}" aria-sort="${state.sortKey===k?(state.sortDir<0?'descending':'ascending'):'none'}">${lbl}${state.sortKey===k?(state.sortDir<0?' ↓':' ↑'):''}</th>`).join('')+'</tr>';
+  for(const p of rows){
+    html+=`<tr>
+      <td>${p.symbol}<div style="font-family:Inter;font-weight:400;font-size:10.5px;color:var(--dim)">${p.name||''}</div></td>
+      <td>${p.shares}</td><td>${p.fill?money(p.fill):'-'}</td><td>${money(p.price)}</td><td>${money(p.value)}</td>
+      <td><span class="wbar" style="width:${Math.max(2,38*(p.weight||0)/maxW)}px"></span>${num(p.weight,1)}%</td>
+      <td>${p.cost!=null?money(p.cost,0):'-'}</td>
+      <td class="${cls(p.unreal)}">${p.unreal!=null?money(p.unreal):'-'}</td>
+      <td class="${cls(p.unreal_pct)}">${pct(p.unreal_pct,true)}</td>
+      <td>${p.vol1y!=null?num(p.vol1y,1)+'%':'-'}</td>
+      <td>${num(p.beta1y)}</td></tr>`;
+  }
+  $('postable').innerHTML=html;
+  $('postable').querySelectorAll('th').forEach(th=>th.addEventListener('click',()=>{
+    const k=th.dataset.k;
+    if(state.sortKey===k)state.sortDir*=-1; else{state.sortKey=k;state.sortDir=k==='symbol'?1:-1;}
+    renderPositions(d);
+  }));
+}
+
+function renderRecord(d){
+  let html='<tr><th>Date</th><th>Account value</th><th>Dow level</th><th>Engine (close)</th><th>Δ</th></tr>';
+  for(const w of d.weekly||[]){
+    html+=`<tr><td>${w.date}</td><td>${money(w.account_value)}</td><td>${w.dow_level==null?'-':w.dow_level.toLocaleString('en-US')}</td>
+      <td>${w.engine_value==null?'-':money(w.engine_value)}</td>
+      <td>${w.delta==null?'-':money(w.delta)}</td></tr>`;
+  }
+  $('rectable').innerHTML=html;
+
+  $('coverage').innerHTML=
+    `Period: <b>${d.period.start} → ${d.period.end}</b> (${d.period.trading_days} trading days)<br>`+
+    `Benchmark: <b>${d.dow_label||'Dow Jones'}</b> · secondary S&amp;P 500 (SPY)<br>`+
+    `Risk-free rate for Sharpe/Sortino: <b>3.8%</b><br>`+
+    (d.income&&d.income.realized_and_income!=null?`Realized + income to date: <b>${money(d.income.realized_and_income)}</b><br>`:'')+
+    (d.income&&d.income.treatment?`Dividends: <b>${d.income.treatment}</b><br>`:'')+
+    `Generated: <b>${(d.generated||'').replace('T',' ')}</b>`;
+
+  $('notes').innerHTML=(d.warnings&&d.warnings.length)
+    ?'<ul style="margin-left:18px;line-height:1.9">'+d.warnings.map(w=>`<li>${w}</li>`).join('')+'</ul>'
+    :'None: everything parsed and reconciled without adjustments.';
+}
+
+/* ---------- weekly-only fallback (no analytics.json) ---------- */
+function renderWeeklyFallback(perf){
+  const entries=((perf&&perf.entries)||[]).map(e=>({date:e.date,acct:e.account_value??e.acct,dow:e.dow_level??e.dow}))
+    .filter(e=>e.date&&e.acct>0&&e.dow>0);
+  document.querySelectorAll('.apanel').forEach(p=>p.style.display='none');
+  $('anEmpty').style.display='block';
+  if(!entries.length){
+    $('anAsOf').textContent='Awaiting first data publication.';
+    $('anTiles').innerHTML='';
+    return;
+  }
+  const base=entries[0], last=entries[entries.length-1];
+  const ret=(last.acct/base.acct-1)*100, dret=(last.dow/base.dow-1)*100;
+  $('anAsOf').textContent=`${entries.length} week${entries.length!==1?'s':''} tracked / baseline ${base.date} / latest ${last.date} / weekly record only`;
+  $('anTiles').innerHTML=[
+    tile('Portfolio value',money0(last.acct),`baseline ${money0(base.acct)} on ${base.date}`),
+    tile('Committee return',pct(ret,true),'since inception',ret),
+    tile('Dow return',pct(dret,true),'same period',dret),
+    tile('Alpha vs Dow',(ret-dret>0?'+':'')+(ret-dret).toFixed(2)+' pts','the headline figure',ret-dret),
+  ].join('');
+}
+
+/* ---------- target portfolio ---------- */
+const DOW30_NAMES={
+  AAPL:"Apple",AMGN:"Amgen",AMZN:"Amazon",AXP:"American Express",BA:"Boeing",
+  CAT:"Caterpillar",CRM:"Salesforce",CSCO:"Cisco",CVX:"Chevron",DIS:"Disney",
+  GOOGL:"Alphabet",GS:"Goldman Sachs",HD:"Home Depot",HON:"Honeywell",IBM:"IBM",JNJ:"Johnson & Johnson",
+  JPM:"JPMorgan Chase",KO:"Coca-Cola",MCD:"McDonald's",MMM:"3M",MRK:"Merck",
+  MSFT:"Microsoft",NKE:"Nike",NVDA:"NVIDIA",PG:"Procter & Gamble",SHW:"Sherwin-Williams",
+  TRV:"Travelers",UNH:"UnitedHealth",V:"Visa",VZ:"Verizon",WMT:"Walmart",
+};
+function renderTargets(data){
+  let list=[];
+  if(Array.isArray(data))list=data;
+  else if(data&&Array.isArray(data.holdings))list=data.holdings;
+  else if(data&&Array.isArray(data.suggested_portfolio))list=data.suggested_portfolio;
+  const holdings=list.map(x=>({
+    ticker:(x.ticker||'').toUpperCase(),
+    name:x.name||DOW30_NAMES[(x.ticker||'').toUpperCase()]||'',
+    weight:x.weight_pct??x.weight??x.committee_weight_pct??0,
+  })).filter(x=>x.ticker&&x.weight>0).sort((a,b)=>b.weight-a.weight);
+
+  const wrap=$('holdingsWrap'), asOf=$('holdingsAsOf');
+  if(!holdings.length){
+    wrap.innerHTML='<div class="holdings-empty">Holdings will appear here once the first weekly portfolio is published.</div>';
+    asOf.textContent=''; return;
+  }
+  const maxW=Math.max(...holdings.map(x=>x.weight));
+  let html='<div class="holdings-head"><span>#</span><span>Position</span><span>Target weight</span><span>%</span></div>';
+  holdings.forEach((x,i)=>{
+    html+=`<div class="holding-row">
+      <div class="holding-rank">${String(i+1).padStart(2,'0')}</div>
+      <div><div class="holding-ticker">${x.ticker}</div><div class="holding-name">${x.name}</div></div>
+      <div class="holding-bar-track"><div class="holding-bar-fill" style="width:${(x.weight/maxW*100).toFixed(1)}%"></div></div>
+      <div class="holding-weight">${x.weight.toFixed(1)}%</div>
+    </div>`;
+  });
+  wrap.innerHTML=html;
+  const total=holdings.reduce((s,x)=>s+x.weight,0);
+  asOf.textContent=`${holdings.length} target position${holdings.length!==1?'s':''} / ${total.toFixed(0)}% target weight${data&&data.date?' / as of '+data.date:''}`;
+  // scaleX (compositor-only) with a short stagger, width stays static
+  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+    document.querySelectorAll('.holding-bar-fill').forEach((el,i)=>{
+      el.style.transitionDelay=Math.min(i*40,400)+'ms';
+      el.style.transform='scaleX(1)';
+    });
+  });});
+}
+
+/* ---------- more-analytics toggle ---------- */
+$('moreBtn').addEventListener('click',()=>{
+  const open=!$('anDeep').classList.contains('open');
+  $('anDeep').classList.toggle('open',open);
+  $('moreBtn').classList.toggle('open',open);
+  $('moreBtn').firstChild.textContent = open?'Less analytics ':'More analytics ';
+  if(open) renderPanelCharts(document.querySelector('#anTabs .tab.active').dataset.t);
+});
+
+/* ---------- tabs / pills / reveal ---------- */
+$('anTabs').querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $('anTabs').querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.apanel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('ap-'+t.dataset.t).classList.add('active');
+  renderPanelCharts(t.dataset.t);
+}));
+document.querySelectorAll('.bpill').forEach(b=>b.addEventListener('click',()=>{
+  const k=b.dataset.b;
+  state.bench[k]=!state.bench[k];
+  b.classList.toggle('on',state.bench[k]);
+  const g=state.charts['c-growth'];
+  if(g){g.setDatasetVisibility(1+BENCH_KEYS.indexOf(k),state.bench[k]);g.update();}
+}));
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+},{threshold:.1});
+document.querySelectorAll('section .wrap > *').forEach(el=>{el.classList.add('reveal');io.observe(el);});
+/* Once a reveal entrance finishes, drop its classes: the leftover transform
+   would otherwise act as a containing block for the fixed-position term
+   popovers (and reduced-motion browsers skip the transition entirely). */
+document.addEventListener('transitionend', e => {
+  const el = e.target;
+  if (el.classList && el.classList.contains('reveal') && el.classList.contains('in'))
+    el.classList.remove('reveal', 'in');
+});
+
+boot();
+</script>
+</body>
+</html>
