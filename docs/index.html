@@ -467,7 +467,7 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
           <button class="bpill" data-b="spy" style="--dc:#7c86a0"><span class="dot"></span>S&amp;P 500</button>
         </span></h3>
       <div class="chartbox tall"><canvas id="c-growth"></canvas></div>
-      <p class="note">The committee line is total account value (dividends land in cash and are redeployed at the next rebalance) while the Dow price index excludes dividends, giving the headline a small structural tailwind. This is disclosed rather than adjusted; the weekly public record in <b>Record &amp; Notes</b> is the audited baseline.</p>
+      <p class="note">The committee line is total account value (dividends reinvest automatically at the broker) while the Dow price index excludes dividends, giving the headline a small structural tailwind. This is disclosed rather than adjusted; the weekly public record in <b>Record &amp; Notes</b> is the audited baseline.</p>
     </div>
 
     <div class="morebar">
@@ -488,7 +488,7 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
     <!-- Overview -->
     <div class="apanel active" id="ap-overview">
       <div class="grid2">
-        <div class="card"><h3>Account value <small>▲ = weekly public record</small></h3>
+        <div class="card"><h3>Account value</h3>
           <div class="chartbox"><canvas id="c-value"></canvas></div></div>
         <div class="card"><h3>Allocation</h3>
           <div class="chartbox"><canvas id="c-alloc"></canvas></div></div>
