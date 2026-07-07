@@ -576,14 +576,14 @@ function exportJSON() {
       committee_total_return_pct: +r.acctRet.toFixed(3), committee_price_return_pct: +r.priceRet.toFixed(3),
       dow_return_pct: +r.dowRet.toFixed(3), alpha_pct: +r.alpha.toFixed(3) })),
   };
-  downloadFile(JSON.stringify(record, null, 2), `furton_performance_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+  downloadFile(JSON.stringify(record, null, 2), `weekly_records/furton_performance_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
 }
 
 function exportCSV() {
   const rows = computed();
   let csv = 'date,account_value,dow_level,dividends,committee_total_return_pct,committee_price_return_pct,dow_return_pct,alpha_pct\n';
   csv += rows.map(r => `${r.date},${r.acct},${r.dow},${r.div || 0},${r.acctRet.toFixed(3)},${r.priceRet.toFixed(3)},${r.dowRet.toFixed(3)},${r.alpha.toFixed(3)}`).join('\n');
-  downloadFile(csv, `furton_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  downloadFile(csv, `weekly_records/furton_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
 }
 
 function downloadFile(content, name, type) {

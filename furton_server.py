@@ -50,7 +50,7 @@ TEMPERATURE  = 0.3
 
 # Dated, append-only archive of full committee records (blind + deliberation
 # verdicts, vote, statement) keyed by screen date. Lives in the project root —
-# NOT under furton_website/ — so it never deploys to Netlify.
+# NOT under furton_website/ or docs/ — so it never deploys to the public site.
 SCREENS_DIR  = Path(__file__).resolve().parent / "screens"
 _archive_lock = threading.Lock()
 
@@ -98,7 +98,8 @@ WOOD_LIBRARY          = Path.home() / "wood_library"                        / "m
 # Committee weighted vote threshold (long-only — committee verdict is Buy or Pass)
 BUY_THRESHOLD   =  0.3
 
-# ── Dow 30 constituents (June 2026) ────────────────────────────────────────────
+# ── Dow 30 constituents (as of 2026-06-29) ─────────────────────────────────────
+# Alphabet (GOOGL) replaced Verizon (VZ) in the index effective 2026-06-29.
 # ai_relevant flags whether Aschenbrenner should be auto-included.
 # High = core AI infrastructure/platform; Medium = material AI exposure.
 DOW30 = [
@@ -112,6 +113,7 @@ DOW30 = [
     {"ticker": "CSCO", "name": "Cisco Systems Inc.",            "ai_relevant": True,  "sector": "Technology"},
     {"ticker": "CVX",  "name": "Chevron Corp.",                 "ai_relevant": False, "sector": "Energy"},
     {"ticker": "DIS",  "name": "Walt Disney Co.",               "ai_relevant": False, "sector": "Communication Services"},
+    {"ticker": "GOOGL","name": "Alphabet Inc.",                 "ai_relevant": True,  "sector": "Communication Services"},
     {"ticker": "GS",   "name": "Goldman Sachs Group Inc.",      "ai_relevant": False, "sector": "Financials"},
     {"ticker": "HD",   "name": "Home Depot Inc.",               "ai_relevant": False, "sector": "Consumer Discretionary"},
     {"ticker": "HON",  "name": "Honeywell International Inc.",   "ai_relevant": False, "sector": "Industrials"},
@@ -130,7 +132,6 @@ DOW30 = [
     {"ticker": "TRV",  "name": "Travelers Cos. Inc.",           "ai_relevant": False, "sector": "Financials"},
     {"ticker": "UNH",  "name": "UnitedHealth Group Inc.",       "ai_relevant": False, "sector": "Healthcare"},
     {"ticker": "V",    "name": "Visa Inc.",                     "ai_relevant": True,  "sector": "Financials"},
-    {"ticker": "VZ",   "name": "Verizon Communications Inc.",   "ai_relevant": False, "sector": "Communication Services"},
     {"ticker": "WMT",  "name": "Walmart Inc.",                  "ai_relevant": False, "sector": "Consumer Staples"},
 ]
 
@@ -398,7 +399,7 @@ def enrich(query):
         brief = "\n\n".join(text_parts).strip()
         brief = strip_preamble(brief)
         if not brief:
-            print(f"  [Enrich] failed — got a response but no text content to use")
+            print("  [Enrich] failed — got a response but no text content to use")
             return None, usage
         return brief, usage
     except Exception as e:
@@ -431,7 +432,7 @@ def strip_preamble(text):
 # query, not the full brief which the embedder silently truncates to its ~190-word
 # window so retrieval only ever saw the brief's opening). REFERENCE_PRICE / _ASOF
 # give a decision-time advisory price captured at screen time (GAP 1.6).
-import re as _re
+_re = re  # module-level `re` (imported at top); alias kept for this section's names
 
 # Tolerant of optional markdown emphasis (**LABEL:**) around the label/colon.
 _RETRIEVAL_QUERY_RE = _re.compile(
@@ -1321,9 +1322,11 @@ RESPONSE TO COMMITTEE: [100-150 words engaging with the most significant disagre
                     print(f"  ✗ {investor_name}: HTTP {status}")
 
         threads = [threading.Thread(target=deliberate_investor, args=(name,)) for name in active_investors]
-        for t in threads: t.start()
+        for t in threads:
+            t.start()
         # Give each thread up to 150s — deliberation calls include corpus + peer summaries
-        for t in threads: t.join(timeout=150)
+        for t in threads:
+            t.join(timeout=150)
 
         # Flag any investors who timed out without a result
         for name in active_investors:
@@ -1481,8 +1484,10 @@ Write the committee statement now. 150-250 words."""
                         print(f"    parse error {investor_name}: {e}")
 
         threads = [threading.Thread(target=evaluate, args=(n,)) for n in active_investors]
-        for t in threads: t.start()
-        for t in threads: t.join(timeout=150)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=150)
         # Exclude parse-failures/errors from the verdict (kept in results for cost).
         verdicts = [results[n] for n in active_investors
                     if n in results and not results[n].get("parse_error")]
@@ -1497,16 +1502,19 @@ Write the committee statement now. 150-250 words."""
         def peer_summary(exclude_name):
             lines = ["The other committee members submitted these verdicts:\n"]
             for v in verdicts:
-                if v["investor"] == exclude_name: continue
+                if v["investor"] == exclude_name:
+                    continue
                 lines.append(f"**{v['investor']}**: {v['position']} (conviction {v['conviction']}/10)")
                 tm = re.search(r"THESIS:\s*([\s\S]+)", v.get("raw",""), re.I)
-                if tm: lines.append(f'  "{tm.group(1).strip()[:300]}..."')
+                if tm:
+                    lines.append(f'  "{tm.group(1).strip()[:300]}..."')
                 lines.append("")
             return "\n".join(lines)
 
         def deliberate(investor_name):
             my = next((v for v in verdicts if v["investor"] == investor_name), None)
-            if not my: return
+            if not my:
+                return
             persona = INVESTOR_SYSTEMS[investor_name]
             context = retrieve_context(investor_name, brief, self.stores)
             system  = build_cached_system(persona, context,
@@ -1559,8 +1567,10 @@ RESPONSE TO COMMITTEE: [100-150 words engaging the key disagreement, in your voi
                         print(f"    delib parse error {investor_name}: {e}")
 
         threads = [threading.Thread(target=deliberate, args=(n,)) for n in active_investors]
-        for t in threads: t.start()
-        for t in threads: t.join(timeout=150)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=150)
         # Carry forward any that timed out
         for name in active_investors:
             if name not in results:
@@ -1890,7 +1900,6 @@ Write the statement now. 120-200 words."""
             self.send_json(503, {"error": err})
             return
 
-        import re
         out = {}
         for stock in stocks:
             ticker = stock["ticker"]
@@ -2204,8 +2213,8 @@ def main():
     elif with_rag:
         print(f"  {len(with_rag)}/5 using RAG retrieval; the rest use even-sampling fallback")
     else:
-        print(f"  No embeddings found — all using even-sampling fallback.")
-        print(f"  Run furton_embed.py to enable RAG retrieval.")
+        print("  No embeddings found — all using even-sampling fallback.")
+        print("  Run furton_embed.py to enable RAG retrieval.")
 
     server = http.server.HTTPServer(("localhost", PORT), FurtonHandler)
     print(f"\n✓ Server running at http://localhost:{PORT}")

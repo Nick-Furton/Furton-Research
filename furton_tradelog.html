@@ -319,10 +319,17 @@
   </div>
   <div id="ddBanner" style="display:none;"></div>
   <div class="rebalance-actions">
-    <button class="ghost-btn" onclick="document.getElementById('rebalFile').click()">Load this week's screener →</button>
+    <button class="ghost-btn" onclick="document.getElementById('rebalFile').click()">1 · Load this week's screener →</button>
     <input type="file" id="rebalFile" accept=".json" style="display:none" onchange="loadRebalance(event)" />
-    <span class="import-hint" id="rebalHint">Import a fresh Dow 30 screener export to compare against your current holdings and generate a trade ticket.</span>
+    <button class="ghost-btn" onclick="document.getElementById('schwabFile').click()">2 · Sync fills from Schwab CSV →</button>
+    <input type="file" id="schwabFile" accept=".csv" style="display:none" onchange="syncFromSchwabCSV(event)" />
   </div>
+  <div class="import-hint" id="rebalHint" style="margin-top:8px;line-height:1.6;">
+    <b>Weekly cycle:</b> load the screener to build a trade ticket → "Log all trades" → execute them in Schwab →
+    upload your Schwab <b>Positions CSV</b> to auto-fill actual shares, fill prices (avg cost) &amp; current prices →
+    <b>Export Log JSON</b> to save the week's backup.
+  </div>
+  <div id="syncResult" style="display:none; margin-top:10px;"></div>
   <div id="ticketWrap" style="display:none;">
     <div class="ticket" id="ticket"></div>
   </div>
@@ -396,6 +403,26 @@ function buildTicket(targets) {
   renderDDFlag();   // re-check the published drawdown override before generating a ticket
   const held = {};
   for (const t of trades) if (t.shares > 0) held[t.ticker] = t;
+
+  // Hard stop: an explicit $0 mark (the unpriced-spinoff placeholder — see
+  // positionValue) is honoured by the sizing math, so it silently shrinks the
+  // portfolio base and prices any forced exit at $0 proceeds (HONA, 2026-07-06:
+  // base ~$460 low, phantom −$468 realized loss). Refuse to size a ticket until
+  // every held name has a real mark.
+  const unpriced = Object.values(held).filter(t => t.currentPrice === 0).map(t => t.ticker);
+  if (unpriced.length > 0) {
+    lastTicket = null;
+    const wrap = document.getElementById('ticketWrap');
+    wrap.style.display = 'block';
+    document.getElementById('ticket').innerHTML =
+      `<div style="padding:11px 14px;border:1px solid var(--short);background:rgba(181,52,26,0.08);` +
+      `color:var(--loss);font-size:11px;line-height:1.5;">` +
+      `<b>⚠ Ticket blocked — ${unpriced.join(', ')} ${unpriced.length > 1 ? 'have' : 'has'} a $0 current price.</b> ` +
+      `A $0 mark undersizes the entire rebalance and would log any exit as $0 proceeds. ` +
+      `Enter a real Current Price on the holding${unpriced.length > 1 ? 's' : ''} below ` +
+      `(or sync a Schwab Positions CSV), then re-load the screener file.</div>`;
+    return;
+  }
 
   const deployedAtMarket = Object.values(held).reduce((s,t) => s + positionValue(t), 0);
   // True cash balance: starting capital minus cost of current holdings, plus all
@@ -658,7 +685,7 @@ function _applyOne(a) {
         id: Date.now() + Math.random(),
         ticker: a.ticker, name: a.name, position: 'BUY',
         weight: 0, refPrice: 0, fillPrice: 0, amount: Math.round(a.amount), shares: 0,
-        currentPrice: 0, date: new Date().toISOString().split('T')[0], pendingFill: true,
+        currentPrice: null, date: new Date().toISOString().split('T')[0], pendingFill: true,
       });
     }
   } else if (a.kind === 'adjust') {
@@ -728,6 +755,10 @@ let startingCapital = 10000;
 // True cash = startingCapital − cost of current holdings + Σ(cashEvents). This is
 // the real running balance — buys/holds flow through holdings cost automatically,
 // so editing a held row stays consistent without re-deriving deltas.
+// NOTE: corporate-action cash (cash-in-lieu, spin-off proceeds, merger payouts)
+// arrives at the broker without any trade the ledger can see — it stays invisible
+// here until recorded manually ("+ dividend / cash") or picked up by a Schwab
+// Positions-CSV sync, so do one of those after every corporate action.
 let cashEvents = [];
 
 // Sum of all recorded cash events (realized P&L + dividends + manual adjustments).
@@ -785,7 +816,7 @@ const DOW30_NAMES = {
   AAPL: "Apple Inc.", AMGN: "Amgen Inc.", AMZN: "Amazon.com Inc.",
   AXP: "American Express Co.", BA: "Boeing Co.", CAT: "Caterpillar Inc.",
   CRM: "Salesforce Inc.", CSCO: "Cisco Systems Inc.", CVX: "Chevron Corp.",
-  DIS: "Walt Disney Co.", GS: "Goldman Sachs Group Inc.", HD: "Home Depot Inc.",
+  DIS: "Walt Disney Co.", GOOGL: "Alphabet Inc.", GS: "Goldman Sachs Group Inc.", HD: "Home Depot Inc.",
   HON: "Honeywell International Inc.", IBM: "International Business Machines",
   JNJ: "Johnson & Johnson", JPM: "JPMorgan Chase & Co.", KO: "Coca-Cola Co.",
   MCD: "McDonald's Corp.", MMM: "3M Co.", MRK: "Merck & Co. Inc.",
@@ -853,7 +884,7 @@ function importScreener(event) {
           fillPrice: 0,        // to be filled in after the trade executes
           amount: Math.round(dollarAmount),
           shares: 0,
-          currentPrice: 0,
+          currentPrice: null,
           date: new Date().toISOString().split('T')[0],
           pendingFill: true,
         });
@@ -869,6 +900,190 @@ function importScreener(event) {
   event.target.value = '';
 }
 
+// ── Schwab Positions CSV sync ───────────────────────────────────────────────
+// Parse a Schwab "Positions" export and fill in the actual shares, fill price
+// (average cost = Cost Basis ÷ Qty), and current price for each held row — so
+// you upload one CSV after trading instead of typing every stat by hand. Mirrors
+// the tolerant column-matching in furton_capture_positions.py.
+function parseCSVLine(line) {
+  const out = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += c;
+    } else if (c === '"') { inQ = true; }
+    else if (c === ',') { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+// Parse a Schwab money/qty cell: strips $ , % and quotes, handles (neg) and '--'.
+// Returns null for blank/'--'/'N/A' so a missing value never reads as 0.
+function csvNum(s) {
+  if (s == null) return null;
+  let t = String(s).trim().replace(/^"|"$/g, '').replace(/[$,%]/g, '').trim();
+  if (t === '' || t === '--' || t.toLowerCase() === 'n/a') return null;
+  let neg = false;
+  if (t.startsWith('(') && t.endsWith(')')) { neg = true; t = t.slice(1, -1); }
+  const v = parseFloat(t);
+  if (isNaN(v)) return null;
+  return neg ? -v : v;
+}
+
+function syncFromSchwabCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const rows = e.target.result.split(/\r?\n/).filter(l => l.trim().length).map(parseCSVLine);
+
+      // Locate the header row (the one naming Symbol + a Market Value column).
+      let hi = -1, col = {};
+      for (let i = 0; i < rows.length; i++) {
+        const low = rows[i].map(c => c.trim().replace(/^"|"$/g, '').toLowerCase());
+        if (low.includes('symbol') && low.some(c => c.includes('market value') || c.includes('mkt val'))) {
+          col = {};
+          low.forEach((c, j) => {
+            if (c === 'symbol' && col.symbol == null) col.symbol = j;
+            else if ((c.includes('quantity') || c.startsWith('qty')) && col.qty == null) col.qty = j;
+            else if (c === 'price' && col.price == null) col.price = j;   // exact: skip "price change"
+            else if ((c.includes('market value') || c.includes('mkt val')) && col.mv == null) col.mv = j;
+            else if (c.includes('cost basis') && col.cost == null) col.cost = j;
+          });
+          if (col.symbol != null && col.qty != null && col.mv != null) { hi = i; break; }
+        }
+      }
+      if (hi < 0) {
+        showToast('✗ Not a Schwab Positions CSV (no Symbol + Market Value header found).', false);
+        event.target.value = ''; return;
+      }
+
+      // Read position rows; capture the cash and account-total footer rows separately.
+      const csvPos = []; let csvCash = null, csvAccountTotal = null;
+      for (let i = hi + 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (col.symbol >= r.length || col.mv >= r.length) continue;
+        const sym = (r[col.symbol] || '').trim().replace(/^"|"$/g, '');
+        const low = sym.toLowerCase();
+        const mv = csvNum(r[col.mv]);
+        if (low.startsWith('cash')) { if (mv != null) csvCash = (csvCash || 0) + mv; continue; }
+        if (low.endsWith('total') || low.startsWith('account')) { if (mv != null) csvAccountTotal = mv; continue; }
+        if (!sym || mv == null) continue;
+        csvPos.push({
+          ticker: sym.toUpperCase(),
+          qty:   col.qty  != null ? csvNum(r[col.qty])  : null,
+          price: col.price != null ? csvNum(r[col.price]) : null,
+          cost:  col.cost != null ? csvNum(r[col.cost]) : null,
+          mv,
+        });
+      }
+      if (!csvPos.length) {
+        showToast('✗ Found the header but no position rows parsed. Check the CSV.', false);
+        event.target.value = ''; return;
+      }
+
+      // Apply to the live book. Schwab is authoritative for the current holdings:
+      // a CSV position updates its matching row (or is added if new); a logged row
+      // absent from the CSV has been sold and is removed; cash is then reconciled to
+      // the broker's actual balance with one ledger entry, which books the dividends
+      // Schwab reinvested silently (they grow cost basis past the starting capital
+      // and otherwise drive the log's cash negative).
+      const today = new Date().toISOString().split('T')[0];
+      let updated = 0, added = 0, lockedRefreshed = 0; const dupes = [];
+      const csvTk = new Set(csvPos.map(p => p.ticker));
+      for (const p of csvPos) {
+        const same = trades.filter(x => x.ticker === p.ticker);
+        if (same.length) {
+          if (p.price != null) same.forEach(x => x.currentPrice = p.price);   // refresh price on every row of this ticker
+          const primary = same.find(x => !x.locked) || same[0];
+          if (p.qty != null) primary.shares = p.qty;
+          if (p.cost != null && p.qty) { primary.fillPrice = +(p.cost / p.qty).toFixed(4); primary.amount = Math.round(p.cost); }
+          else if (p.qty) {
+            if (!(primary.fillPrice > 0) && p.price != null) primary.fillPrice = p.price;  // no cost basis → approx at market
+            primary.amount = Math.round((primary.fillPrice > 0 ? primary.fillPrice : (p.price || 0)) * p.qty);
+          }
+          if (primary.shares > 0 && primary.fillPrice > 0) primary.pendingFill = false;
+          if (primary.locked) lockedRefreshed++;
+          if (same.length > 1) dupes.push(p.ticker);
+          updated++;
+        } else {
+          const qty = p.qty || 0;
+          const fill = (p.cost != null && qty) ? +(p.cost / qty).toFixed(4) : (p.price || 0);
+          trades.push({
+            id: Date.now() + Math.random() + added,
+            ticker: p.ticker, name: nameFor(p.ticker), position: 'BUY',
+            weight: 0, refPrice: 0, fillPrice: fill,
+            amount: p.cost != null ? Math.round(p.cost) : Math.round(fill * qty),
+            shares: qty, currentPrice: p.price != null ? p.price : fill,
+            date: new Date().toISOString().split('T')[0],
+            pendingFill: !(qty > 0 && fill > 0),
+          });
+          added++;
+        }
+      }
+      // Names in the log but no longer at the broker have been sold — drop them.
+      const removed = trades.filter(t => !csvTk.has(t.ticker)).map(t => t.ticker);
+      trades = trades.filter(t => csvTk.has(t.ticker));
+
+      // Reconcile cash to the broker. Remove any prior reconciliation plug first so
+      // repeated syncs never stack, then add one entry that makes cashRemaining()
+      // equal the broker's idle cash. The plug absorbs reinvested income + drift.
+      cashEvents = cashEvents.filter(e => e.type !== 'reconcile');
+      let reconAmt = null;
+      if (csvCash != null) {
+        const modelCash = startingCapital - deployedCost() + cashLedger();   // ledger now excludes the plug
+        reconAmt = +(csvCash - modelCash).toFixed(2);
+        if (Math.abs(reconAmt) >= 0.005) {
+          cashEvents.push({ date: today, type: 'reconcile', amount: reconAmt,
+            note: `Reconciled to Schwab cash (${fmtMoney2(csvCash)}) — reinvested income / drift, ${today}` });
+        }
+      }
+
+      saveState(); render();
+      renderSyncResult({ updated, added, lockedRefreshed, removed, dupes, reconAmt, csvCash, csvAccountTotal });
+      const warn = (csvCash == null) || dupes.length > 0;
+      showToast(`✓ Synced from Schwab: ${updated} updated, ${added} added, ${removed.length} removed.`, !warn);
+    } catch (err) {
+      showToast('✗ Could not read that CSV: ' + err.message, false);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// Persistent post-sync summary: counts, warnings, and a reconciliation of the
+// live book's total (positions at market + cash) against Schwab's account total.
+function renderSyncResult({ updated, added, lockedRefreshed, removed, dupes, reconAmt, csvCash, csvAccountTotal }) {
+  const el = document.getElementById('syncResult');
+  if (!el) return;
+  const tlValue = trades.reduce((s, t) => s + (t.shares > 0 ? positionValue(t) : 0), 0);
+  const tlCash  = cashRemaining();
+  const tlTotal = tlValue + tlCash;
+
+  const lines = [];
+  lines.push(`<b>✓ Schwab sync complete</b> — ${updated} updated, ${added} added, ${removed.length} removed`
+    + (lockedRefreshed ? `, ${lockedRefreshed} locked row(s) refreshed` : '') + '.');
+  if (removed.length) lines.push(`Removed (sold — no longer at Schwab): <b>${removed.join(', ')}</b>.`);
+  if (reconAmt != null && Math.abs(reconAmt) >= 0.005)
+    lines.push(`Booked ${reconAmt >= 0 ? '+' : '−'}${fmtMoney2(Math.abs(reconAmt))} reinvested income / reconciliation so log cash matches the broker.`);
+  if (csvAccountTotal != null) {
+    const diff = tlTotal - csvAccountTotal;
+    const ok = Math.abs(diff) <= Math.max(2, csvAccountTotal * 0.002);   // within $2 or 0.2% after reconcile
+    lines.push(`Account total — Schwab <b>${fmtMoney2(csvAccountTotal)}</b> vs log <b>${fmtMoney2(tlTotal)}</b> `
+      + `(positions ${fmtMoney2(tlValue)} + cash ${fmtMoney2(tlCash)}) · `
+      + `<span style="color:${ok ? 'var(--buy)' : 'var(--loss)'}">Δ ${diff >= 0 ? '+' : '−'}${fmtMoney2(Math.abs(diff))}${ok ? ' ✓' : ''}</span>`);
+  }
+  if (csvCash == null) lines.push(`<span style="color:var(--amber)">⚠ No cash row found in the CSV — cash not reconciled.</span>`);
+  if (dupes.length) lines.push(`<span style="color:var(--amber)">⚠ Multiple rows share a ticker (${[...new Set(dupes)].join(', ')}); updated the active one only.</span>`);
+
+  el.style.cssText = 'display:block;margin-top:10px;padding:11px 14px;border:1px solid var(--rule);'
+    + 'background:var(--paper-card);font-size:11px;line-height:1.7;';
+  el.innerHTML = lines.join('<br>');
+}
+
 function deleteTrade(id) {
   trades = trades.filter(t => t.id !== id);
   saveState(); render();
@@ -879,8 +1094,10 @@ function updateField(id, field, value) {
   if (!t) return;
   // Locked rows are published — only the live "current price" can still move.
   if (t.locked && field !== 'currentPrice') { render(); return; }
+  // A blank "current price" means "not yet priced" (fall back to fill), not $0 —
+  // store null. Everything else parses to a number.
   const num = parseNum(value);
-  t[field] = num;
+  t[field] = (field === 'currentPrice' && String(value).trim() === '') ? null : num;
   // Recompute dependent fields
   if (field === 'fillPrice') {
     if (num > 0) { t.shares = t.amount / num; t.pendingFill = false; }
@@ -909,12 +1126,14 @@ function lockTrade(id) {
 
 // ── Calculations ───────────────────────────────────────────────────────────
 function positionValue(t) {
-  const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
+  // currentPrice is authoritative once recorded — including an explicit $0 for an
+  // unpriced spin-off (e.g. HONA). Fall back to fill only when it was never set (null).
+  const px = (t.currentPrice == null) ? t.fillPrice : t.currentPrice;
   return t.shares * px;
 }
 function positionPL(t) {
   if (t.fillPrice <= 0 || t.shares <= 0) return 0;
-  const px = t.currentPrice > 0 ? t.currentPrice : t.fillPrice;
+  const px = (t.currentPrice == null) ? t.fillPrice : t.currentPrice;
   const dir = 1;  // long-only
   return dir * (px - t.fillPrice) * t.shares;
 }
@@ -970,7 +1189,7 @@ function render() {
           </td>
           <td class="num">${t.shares > 0 ? t.shares.toFixed(3) : '—'}</td>
           <td class="num">
-            <input class="price-input-inline" value="${t.currentPrice > 0 ? t.currentPrice : ''}"
+            <input class="price-input-inline" value="${t.currentPrice != null ? t.currentPrice : ''}"
               placeholder="mkt $" onchange="updateField(${t.id},'currentPrice',this.value)" />
           </td>
           <td class="num">${t.shares > 0 ? fmtMoney(value) : '—'}</td>
@@ -1031,7 +1250,7 @@ function editStartingCapital() {
 // Rebalance redeploys it into target weights — that is the reinvestment. Use a
 // negative number to log cash withdrawn.
 function recordCashEvent() {
-  const v = prompt('Dividend / cash received ($) — reinvested at the next rebalance.\n(Use a negative number for cash withdrawn.)', '');
+  const v = prompt('Dividend / cash received ($) — reinvested at the next rebalance.\n(Use a negative number for cash withdrawn.)\nAlso record corporate-action cash here (cash-in-lieu, spin-off proceeds) — the ledger cannot see it otherwise.', '');
   if (v === null) return;
   const amt = parseNum(v);
   if (!amt) return;
@@ -1065,7 +1284,7 @@ function exportLog() {
     capital_deployed: deployed,
     cash_remaining: cashRemaining(),                       // starting − cost + realized P&L + dividends
     realized_and_income: +cashLedger().toFixed(2),         // cumulative realized P&L + dividends + adjustments
-    dividend_treatment: 'reinvested — dividends land in cash and redeploy at the next rebalance',
+    dividend_treatment: 'reinvested automatically at the broker (DRIP) — each dividend buys fractional shares of the paying stock; the added shares surface in the weekly position snapshots',
     cash_events: cashEvents.map(e => ({ date: e.date, type: e.type, ticker: e.ticker || null, amount: +e.amount.toFixed(2), note: e.note || '' })),
     total_unrealized_pl: trades.reduce((s,t) => s + positionPL(t), 0),
     positions: trades.map(t => ({
@@ -1082,7 +1301,7 @@ function exportLog() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `furton_tradelog_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `weekly_records/furton_tradelog_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
 
@@ -1140,7 +1359,7 @@ function restoreLog(event) {
         fillPrice: p.fill_price ?? p.fillPrice ?? 0,
         amount: p.amount ?? 0,
         shares: p.shares ?? 0,
-        currentPrice: p.current_price ?? p.currentPrice ?? 0,
+        currentPrice: p.current_price ?? p.currentPrice ?? null,
         date: p.date || new Date().toISOString().split('T')[0],
         pendingFill: (p.fill_price ?? p.fillPrice ?? 0) <= 0,
       }));

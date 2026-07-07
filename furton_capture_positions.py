@@ -30,7 +30,12 @@ name and reads Symbol / Quantity / Market Value wherever they sit, skipping the
 cash and "Account Total" footer rows.
 """
 
-import sys, csv, json, re, argparse, datetime
+import sys
+import csv
+import json
+import re
+import argparse
+import datetime
 from pathlib import Path
 
 ROOT         = Path(__file__).resolve().parent
@@ -39,7 +44,8 @@ TARGET_FILE  = ROOT / "furton_website" / "data" / "holdings.json"
 
 # Footer/non-position rows to skip (matched case-insensitively against Symbol).
 SKIP_SYMBOLS = ("cash & cash investments", "cash and cash investments",
-                "cash & money market", "account total", "total", "cash")
+                "cash & money market", "account total", "positions total",
+                "total", "cash")
 
 
 def _num(s):
@@ -118,7 +124,10 @@ def parse_schwab(csv_path):
             if mv is not None:
                 cash_value = (cash_value or 0) + mv
             continue
-        if low in ("account total", "total") or low.startswith("account"):
+        if low.endswith("total") or low.startswith("account"):
+            # Schwab's footer total row is labeled "Account Total" or
+            # "Positions Total" depending on the export; either is the
+            # account value, not a holding.
             if mv is not None:
                 account_value = mv
             continue
