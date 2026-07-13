@@ -1,5 +1,5 @@
 {
- "generated": "2026-07-13T11:37:01",
+ "generated": "2026-07-13T11:44:50",
  "asof": "2026-07-13",
  "period": {
   "start": "2026-06-23",
@@ -1039,7 +1039,7 @@
   {
    "date": "2026-07-13",
    "account_value": 10445.35,
-   "dow_level": 52379.31,
+   "dow_level": 52640,
    "dividends": 0,
    "engine_value": 10432.96,
    "delta": -12.39
