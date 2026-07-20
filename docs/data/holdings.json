@@ -1,65 +1,65 @@
 {
-  "date": "2026-07-13",
+  "date": "2026-07-20",
   "holdings": [
+    {
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 13.51
+    },
     {
       "ticker": "MSFT",
       "name": "Microsoft Corp.",
-      "committee_weight_pct": 14.25
-    },
-    {
-      "ticker": "V",
-      "name": "Visa Inc.",
-      "committee_weight_pct": 12.31
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 12.16
+      "committee_weight_pct": 11.88
     },
     {
       "ticker": "DIS",
       "name": "Walt Disney Co.",
-      "committee_weight_pct": 10.25
+      "committee_weight_pct": 11.35
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 9.78
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 9.65
     },
     {
       "ticker": "GOOGL",
       "name": "Alphabet Inc.",
-      "committee_weight_pct": 8.79
+      "committee_weight_pct": 9.51
     },
     {
-      "ticker": "CRM",
-      "name": "Salesforce Inc.",
-      "committee_weight_pct": 8.11
+      "ticker": "PG",
+      "name": "Procter & Gamble Co.",
+      "committee_weight_pct": 9.24
     },
     {
       "ticker": "NVDA",
       "name": "NVIDIA Corp.",
-      "committee_weight_pct": 8.11
+      "committee_weight_pct": 7.27
+    },
+    {
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 4.82
     },
     {
       "ticker": "JNJ",
       "name": "Johnson & Johnson",
-      "committee_weight_pct": 5.4
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 5.4
+      "committee_weight_pct": 4.5
     },
     {
       "ticker": "AXP",
       "name": "American Express Co.",
-      "committee_weight_pct": 5.12
+      "committee_weight_pct": 4.27
     },
     {
-      "ticker": "HON",
-      "name": "Honeywell International Inc.",
-      "committee_weight_pct": 5.06
-    },
-    {
-      "ticker": "TRV",
-      "name": "Travelers Cos. Inc.",
-      "committee_weight_pct": 5.06
+      "ticker": "AMGN",
+      "name": "Amgen Inc.",
+      "committee_weight_pct": 4.22
     }
   ]
 }
