@@ -1,65 +1,65 @@
 {
-  "date": "2026-07-20",
+  "date": "2026-07-27",
   "holdings": [
-    {
-      "ticker": "CRM",
-      "name": "Salesforce Inc.",
-      "committee_weight_pct": 13.51
-    },
     {
       "ticker": "MSFT",
       "name": "Microsoft Corp.",
-      "committee_weight_pct": 11.88
-    },
-    {
-      "ticker": "DIS",
-      "name": "Walt Disney Co.",
-      "committee_weight_pct": 11.35
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 9.78
-    },
-    {
-      "ticker": "V",
-      "name": "Visa Inc.",
-      "committee_weight_pct": 9.65
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 9.51
-    },
-    {
-      "ticker": "PG",
-      "name": "Procter & Gamble Co.",
-      "committee_weight_pct": 9.24
+      "committee_weight_pct": 12.89
     },
     {
       "ticker": "NVDA",
       "name": "NVIDIA Corp.",
-      "committee_weight_pct": 7.27
+      "committee_weight_pct": 10.8
     },
     {
-      "ticker": "NKE",
-      "name": "Nike Inc.",
-      "committee_weight_pct": 4.82
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 10.67
     },
     {
-      "ticker": "JNJ",
-      "name": "Johnson & Johnson",
-      "committee_weight_pct": 4.5
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 10.52
+    },
+    {
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 10.37
     },
     {
       "ticker": "AXP",
       "name": "American Express Co.",
-      "committee_weight_pct": 4.27
+      "committee_weight_pct": 9.83
     },
     {
-      "ticker": "AMGN",
-      "name": "Amgen Inc.",
-      "committee_weight_pct": 4.22
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 8.84
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 7.37
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 4.91
+    },
+    {
+      "ticker": "HON",
+      "name": "Honeywell International Inc.",
+      "committee_weight_pct": 4.6
+    },
+    {
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 4.6
+    },
+    {
+      "ticker": "TRV",
+      "name": "Travelers Cos. Inc.",
+      "committee_weight_pct": 4.6
     }
   ]
 }
