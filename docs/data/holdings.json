@@ -1,65 +1,70 @@
 {
-  "date": "2026-07-27",
+  "date": "2026-08-03",
   "holdings": [
     {
       "ticker": "MSFT",
       "name": "Microsoft Corp.",
-      "committee_weight_pct": 12.89
-    },
-    {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 10.8
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 10.67
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 10.52
+      "committee_weight_pct": 11.56
     },
     {
       "ticker": "CRM",
       "name": "Salesforce Inc.",
-      "committee_weight_pct": 10.37
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 9.83
-    },
-    {
-      "ticker": "DIS",
-      "name": "Walt Disney Co.",
-      "committee_weight_pct": 8.84
-    },
-    {
-      "ticker": "V",
-      "name": "Visa Inc.",
-      "committee_weight_pct": 7.37
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 4.91
+      "committee_weight_pct": 11.25
     },
     {
       "ticker": "HON",
       "name": "Honeywell International Inc.",
-      "committee_weight_pct": 4.6
+      "committee_weight_pct": 10.76
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 9.27
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 8.96
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 8.83
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 8.32
+    },
+    {
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 8.09
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 6.16
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 4.26
+    },
+    {
+      "ticker": "KO",
+      "name": "Coca-Cola Co.",
+      "committee_weight_pct": 4.26
     },
     {
       "ticker": "NKE",
       "name": "Nike Inc.",
-      "committee_weight_pct": 4.6
+      "committee_weight_pct": 4.26
     },
     {
-      "ticker": "TRV",
-      "name": "Travelers Cos. Inc.",
-      "committee_weight_pct": 4.6
+      "ticker": "JNJ",
+      "name": "Johnson & Johnson",
+      "committee_weight_pct": 3.99
     }
   ]
 }
