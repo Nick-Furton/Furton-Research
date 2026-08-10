@@ -1,70 +1,75 @@
 {
-  "date": "2026-08-03",
+  "date": "2026-08-10",
   "holdings": [
     {
-      "ticker": "MSFT",
-      "name": "Microsoft Corp.",
-      "committee_weight_pct": 11.56
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 10.45
     },
     {
       "ticker": "CRM",
       "name": "Salesforce Inc.",
-      "committee_weight_pct": 11.25
-    },
-    {
-      "ticker": "HON",
-      "name": "Honeywell International Inc.",
-      "committee_weight_pct": 10.76
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 9.27
-    },
-    {
-      "ticker": "V",
-      "name": "Visa Inc.",
-      "committee_weight_pct": 8.96
-    },
-    {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 8.83
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 8.32
-    },
-    {
-      "ticker": "DIS",
-      "name": "Walt Disney Co.",
-      "committee_weight_pct": 8.09
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 6.16
+      "committee_weight_pct": 10.17
     },
     {
       "ticker": "AXP",
       "name": "American Express Co.",
-      "committee_weight_pct": 4.26
+      "committee_weight_pct": 10.09
     },
     {
-      "ticker": "KO",
-      "name": "Coca-Cola Co.",
-      "committee_weight_pct": 4.26
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 9.55
     },
     {
-      "ticker": "NKE",
-      "name": "Nike Inc.",
-      "committee_weight_pct": 4.26
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 8.56
     },
     {
-      "ticker": "JNJ",
-      "name": "Johnson & Johnson",
-      "committee_weight_pct": 3.99
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 8.34
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 7.59
+    },
+    {
+      "ticker": "TRV",
+      "name": "Travelers Cos. Inc.",
+      "committee_weight_pct": 7.56
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "committee_weight_pct": 6.74
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 6.04
+    },
+    {
+      "ticker": "PG",
+      "name": "Procter & Gamble Co.",
+      "committee_weight_pct": 4.12
+    },
+    {
+      "ticker": "AMGN",
+      "name": "Amgen Inc.",
+      "committee_weight_pct": 3.64
+    },
+    {
+      "ticker": "HD",
+      "name": "Home Depot Inc.",
+      "committee_weight_pct": 3.64
+    },
+    {
+      "ticker": "CSCO",
+      "name": "Cisco Systems Inc.",
+      "committee_weight_pct": 3.5
     }
   ]
 }
