@@ -30,12 +30,20 @@ from pathlib import Path
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 
-PORT         = 8765
+PORT         = int(os.environ.get("FURTON_PORT", "8765"))
 # API key is read from this file (a single line beginning with "sk-ant-").
 # Override the location with the FURTON_API_KEY_FILE environment variable;
 # it defaults to furton_api_key.txt in your home directory.
 API_KEY_FILE = Path(os.environ.get("FURTON_API_KEY_FILE",
                                    str(Path.home() / "furton_api_key.txt")))
+
+# Tiingo API token for market data (settled EOD closes) — 2026-08-17 revision.
+# Same pattern as the Anthropic key: single-line file, env override available.
+# The server refuses to start without it: reference prices are load-bearing
+# (they mark every held position when sizing the weekly ticket) and the old
+# enrichment-derived prices proved silently stale (16/30 on 2026-08-10).
+TIINGO_KEY_FILE = Path(os.environ.get("FURTON_TIINGO_KEY_FILE",
+                                      str(Path.home() / "furton_tiingo_key.txt")))
 
 HAIKU_MODEL  = "claude-haiku-4-5"
 SONNET_MODEL = "claude-sonnet-4-6"
@@ -51,7 +59,10 @@ TEMPERATURE  = 0.3
 # Dated, append-only archive of full committee records (blind + deliberation
 # verdicts, vote, statement) keyed by screen date. Lives in the project root —
 # NOT under furton_website/ or docs/ — so it never deploys to the public site.
-SCREENS_DIR  = Path(__file__).resolve().parent / "screens"
+# FURTON_SCREENS_DIR override exists for test isolation (smoke tests must not
+# append same-day re-run records to a real weekly archive).
+SCREENS_DIR  = Path(os.environ.get("FURTON_SCREENS_DIR",
+                                   str(Path(__file__).resolve().parent / "screens")))
 _archive_lock = threading.Lock()
 
 # ── Pricing (USD per token) — standard API rates, June 2026 ─────────────────────
@@ -144,6 +155,22 @@ def load_api_key():
     key = API_KEY_FILE.read_text(encoding="utf-8").strip()
     if not key.startswith("sk-ant-"):
         print(f"\n✗ API key format wrong. Found: {key[:12]}...")
+        exit(1)
+    return key
+
+def load_tiingo_key():
+    """Tiingo tokens are 40-char lowercase hex. Fail loud, never run without one
+    — as of 2026-08-17 every reference price comes from Tiingo (no fallback to
+    enrichment-searched prices, which proved silently stale)."""
+    if not TIINGO_KEY_FILE.exists():
+        print(f"\n✗ Tiingo key file not found at: {TIINGO_KEY_FILE}")
+        print("  Reference prices are Tiingo-sourced (2026-08-17 revision); the")
+        print("  server will not start without the key. Get one free at tiingo.com")
+        print("  and save it as a single line in that file.")
+        exit(1)
+    key = TIINGO_KEY_FILE.read_text(encoding="utf-8").strip()
+    if len(key) < 20 or not all(c in "0123456789abcdef" for c in key.lower()):
+        print(f"\n✗ Tiingo key format looks wrong (want hex token). Found: {key[:8]}...")
         exit(1)
     return key
 
@@ -358,6 +385,70 @@ def call_anthropic(payload, timeout=120, max_retries=3):
 
     return json.dumps({"error": {"message": "Max retries exceeded"}}).encode(), 503
 
+# ── Market data: settled EOD close (Tiingo) — 2026-08-17 revision ──────────────
+# The reference price used for sizing marks AND injected into the enrichment
+# brief is a real settled close from the Tiingo EOD API, replacing the
+# enrichment web-search snapshot (which drifted to 16/30 silently stale by
+# 2026-08-10, with the largest holding marked 36.8% low). Design rules:
+#   - raw `close`, never adjClose: marks must be actual trade prices (an
+#     adjusted series reprices history around dividends; splits arrive as new
+#     raw closes, which is what position sizing wants)
+#   - the request window ends YESTERDAY: during market hours Tiingo's newest
+#     row is a live in-flight value for today, not a settled close
+#   - hard gate: no rows, or newest row older than MAX_CLOSE_AGE_DAYS calendar
+#     days (weekend + one-holiday slack), raises — callers fail the stock
+#     loudly and do NOT archive it, so the weekly archive gate blocks sizing.
+#     There is deliberately no fallback to the enrichment-searched price.
+
+TIINGO_KEY = None           # loaded in main() alongside the Anthropic key
+MAX_CLOSE_AGE_DAYS = 4
+
+def fetch_settled_close(ticker, max_retries=3):
+    """Return (close, iso_date) for the most recent COMPLETED session.
+    Raises RuntimeError on any failure — never returns a guess."""
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=10)
+    end   = today - datetime.timedelta(days=1)
+    url = (f"https://api.tiingo.com/tiingo/daily/{ticker}/prices"
+           f"?startDate={start.isoformat()}&endDate={end.isoformat()}"
+           f"&token={TIINGO_KEY}")
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(
+                url, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                rows = json.load(resp)
+            if not rows:
+                raise RuntimeError(f"Tiingo returned no rows for {ticker}")
+            newest = rows[-1]
+            close = newest.get("close")
+            asof  = (newest.get("date") or "")[:10]
+            if not close or not asof:
+                raise RuntimeError(f"Tiingo row missing close/date for {ticker}")
+            age = (today - datetime.date.fromisoformat(asof)).days
+            if age > MAX_CLOSE_AGE_DAYS:
+                raise RuntimeError(
+                    f"Tiingo close for {ticker} is {age} days old ({asof}), "
+                    f"beyond the {MAX_CLOSE_AGE_DAYS}-day settled-close gate")
+            return float(close), asof
+        except urllib.error.HTTPError as e:
+            # 429/5xx are retryable; 4xx (bad ticker, bad token) is not
+            if (e.code == 429 or e.code >= 500) and attempt < max_retries - 1:
+                last_err = f"HTTP {e.code}"
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Tiingo HTTP {e.code} for {ticker}") from e
+        except RuntimeError:
+            raise
+        except Exception as e:
+            last_err = str(e)
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+    raise RuntimeError(
+        f"Tiingo fetch failed for {ticker} after {max_retries} tries: {last_err}")
+
 # ── Enrichment ─────────────────────────────────────────────────────────────────
 
 ENRICH_SYSTEM = """You are a financial data researcher for Furton Research. Given a stock ticker or company name, use web search to gather current data and produce a structured investment brief. Be factual and specific — use exact numbers.
@@ -373,8 +464,27 @@ RETRIEVAL QUERY: <a single dense line of at most 60 words — business descripti
 
 CRITICAL OUTPUT RULE: Begin your response immediately with the brief itself, starting with the company name as a heading. Do NOT write any preamble, acknowledgment, or conversational introduction. Never begin with phrases like "Sure," "I'll gather," "Here is," "Let me," or "Certainly." The first words of your output must be the company name. End with exactly the three machine-readable lines described above (REFERENCE_PRICE, REFERENCE_PRICE_ASOF, RETRIEVAL QUERY) and nothing after them — no closing remarks, offers to help, or summary statements."""
 
-def enrich(query):
+def enrich(query, verified_close=None, verified_asof=None):
+    """Produce the investment brief. When a verified settled close is supplied
+    (2026-08-17 revision), it is injected into the prompt as the authoritative
+    current price so the committee reasons on real valuation; Haiku still
+    reports its own searched price in the trailer as a cross-check
+    (archived as enrich_reported_price, never used for sizing)."""
     print(f"  [Enrich] {query}")
+    # The run date is stated dynamically. It was hardcoded "June 2026" from
+    # launch through 2026-08-10 — a likely contributor to the frozen June-dated
+    # quotes the searches kept returning (JNJ 2026-06-12 four weeks straight).
+    today_str = datetime.date.today().strftime("%B %d, %Y")
+    verified_line = ""
+    if verified_close is not None:
+        verified_line = (
+            f" VERIFIED MARKET DATA: the last settled closing price was "
+            f"${verified_close} as of {verified_asof} (Tiingo EOD; authoritative). "
+            f"Use this as the current price in all valuation math and in the "
+            f"brief's valuation section; do not substitute a searched price. "
+            f"Still report the most recent price your own web search finds in "
+            f"the REFERENCE_PRICE trailer line — it is recorded as a "
+            f"cross-check against the verified close.")
     payload = {
         "model": HAIKU_MODEL,
         # 3500 (was 2000): the brief's prose alone runs ~1,400 output tokens and,
@@ -386,7 +496,7 @@ def enrich(query):
         "temperature": TEMPERATURE,
         "system": ENRICH_SYSTEM,
         "tools": [{"type": "web_search_20250305", "name": "web_search"}],
-        "messages": [{"role": "user", "content": f"Research and produce a full investment brief for: {query}. Search for current price, recent earnings, valuation multiples, competitive position, and material recent news. Today is June 2026. Begin immediately with the company name — no preamble. End with the REFERENCE_PRICE, REFERENCE_PRICE_ASOF, and RETRIEVAL QUERY lines exactly as instructed."}]
+        "messages": [{"role": "user", "content": f"Research and produce a full investment brief for: {query}. Search for current price, recent earnings, valuation multiples, competitive position, and material recent news. Today is {today_str}.{verified_line} Begin immediately with the company name — no preamble. End with the REFERENCE_PRICE, REFERENCE_PRICE_ASOF, and RETRIEVAL QUERY lines exactly as instructed."}]
     }
     resp_bytes, status = call_anthropic(payload, timeout=60)
     if status != 200:
@@ -1028,18 +1138,42 @@ class FurtonHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             self.send_json(400, {"error": "Invalid JSON"})
             return
-        query = body.get("ticker") or body.get("description", "").strip()
+        ticker = (body.get("ticker") or "").strip()
+        query = ticker or body.get("description", "").strip()
         if not query:
             self.send_json(400, {"error": "Provide ticker or description"})
             return
-        brief, _usage = enrich(query)
+        # Ticker calls get the verified settled close (2026-08-17 revision) with
+        # the same hard gate as the screener; description-only calls have no
+        # symbol to price and keep the old enrichment-derived behavior.
+        verified_close = verified_asof = None
+        if ticker:
+            try:
+                verified_close, verified_asof = fetch_settled_close(ticker)
+            except RuntimeError as e:
+                self.send_json(503, {"error": f"Market data failed: {e}",
+                                     "query": query})
+                return
+        brief, _usage = enrich(query, verified_close=verified_close,
+                               verified_asof=verified_asof)
         if brief:
             ref_price, ref_asof = parse_reference_price(brief)
-            self.send_json(200, {
-                "brief": brief, "query": query,
-                "reference_price": ref_price,
-                "reference_price_asof": ref_asof,
-            })
+            if verified_close is not None:
+                self.send_json(200, {
+                    "brief": brief, "query": query,
+                    "reference_price": verified_close,
+                    "reference_price_asof": verified_asof,
+                    "price_source": "tiingo",
+                    "enrich_reported_price": ref_price,
+                    "enrich_reported_asof": ref_asof,
+                })
+            else:
+                self.send_json(200, {
+                    "brief": brief, "query": query,
+                    "reference_price": ref_price,
+                    "reference_price_asof": ref_asof,
+                    "price_source": "enrichment",
+                })
         else:
             self.send_json(503, {"error": "Enrichment failed", "query": query})
 
@@ -1639,21 +1773,37 @@ Write the statement now. 120-200 words."""
 
         print(f"\n[Screener] {ticker} ({name})")
 
-        # 1. Enrich
-        brief, enrich_usage = enrich(f"{name} ({ticker})")
+        # 1. Verified settled close (Tiingo) — authoritative for sizing marks
+        # as of the 2026-08-17 revision. Hard gate: a name without a verified
+        # mark fails loudly and is NOT archived, so the weekly archive gate
+        # blocks sizing. No fallback to enrichment-searched prices.
+        try:
+            reference_price, reference_price_asof = fetch_settled_close(ticker)
+            print(f"  Ref price: ${reference_price} as of {reference_price_asof} (tiingo, settled)")
+        except RuntimeError as e:
+            print(f"  >>> MARKET DATA FAILED: {e}")
+            self.send_json(200, {"ticker": ticker, "name": name,
+                                 "error": f"Market data failed: {e}"})
+            return
+
+        # 2. Enrich — the brief carries the verified close; Haiku's own searched
+        # price is parsed from the trailer purely as a cross-check record.
+        brief, enrich_usage = enrich(f"{name} ({ticker})",
+                                     verified_close=reference_price,
+                                     verified_asof=reference_price_asof)
         if not brief:
             self.send_json(200, {"ticker": ticker, "name": name, "error": "Enrichment failed"})
             return
 
-        # Decision-time advisory reference price from the enrichment web-search
-        # snapshot (GAP 1.6) — possibly stale/EOD, advisory only, never blocks.
-        reference_price, reference_price_asof = parse_reference_price(brief)
-        if reference_price is not None:
-            print(f"  Ref price: ${reference_price} as of {reference_price_asof or 'unknown'} (advisory)")
+        enrich_reported_price, enrich_reported_asof = parse_reference_price(brief)
+        if enrich_reported_price is not None and reference_price:
+            drift = (enrich_reported_price - reference_price) / reference_price * 100
+            print(f"  Enrich cross-check: ${enrich_reported_price} as of "
+                  f"{enrich_reported_asof or 'unknown'}  ({drift:+.2f}% vs settled)")
         else:
-            print("  Ref price: none captured")
+            print("  Enrich cross-check: none captured")
 
-        # 2. Determine active investors — auto-include Aschenbrenner only if AI-relevant
+        # 3. Determine active investors — auto-include Aschenbrenner only if AI-relevant
         active = [n for n in INVESTORS if n != "Leopold Aschenbrenner"]
         if ai_relevant:
             active.append("Leopold Aschenbrenner")
@@ -1767,6 +1917,9 @@ Write the statement now. 120-200 words."""
             "brief":         brief,
             "reference_price":      reference_price,
             "reference_price_asof": reference_price_asof,
+            "price_source":         "tiingo",
+            "enrich_reported_price": enrich_reported_price,
+            "enrich_reported_asof":  enrich_reported_asof,
             "blind":         blind_verdicts,
             "deliberation":  delib_verdicts,
             "vote":          vote,
@@ -1790,6 +1943,9 @@ Write the statement now. 120-200 words."""
             "brief":         brief[:1200],
             "reference_price":      reference_price,
             "reference_price_asof": reference_price_asof,
+            "price_source":         "tiingo",
+            "enrich_reported_price": enrich_reported_price,
+            "enrich_reported_asof":  enrich_reported_asof,
             "blind":         blind_verdicts,
             "deliberation":  delib_verdicts,
             "vote":          vote,
@@ -2184,7 +2340,7 @@ def run_selftests():
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main():
-    global API_KEY
+    global API_KEY, TIINGO_KEY
 
     print("=" * 60)
     print("FURTON RESEARCH — Local API Server v3")
@@ -2195,6 +2351,11 @@ def main():
     print(f"  ✓ Key loaded ({API_KEY[:12]}...)")
     print(f"  ✓ Sampling temperature pinned at {TEMPERATURE} (logged in each screen archive)")
     print(f"  ✓ Screen archive dir: {SCREENS_DIR}")
+
+    print("\nLoading Tiingo market-data key...")
+    TIINGO_KEY = load_tiingo_key()
+    print(f"  ✓ Tiingo key loaded ({TIINGO_KEY[:6]}...) — reference prices are")
+    print(f"    settled EOD closes with a {MAX_CLOSE_AGE_DAYS}-day freshness gate (rev 2026-08-17)")
 
     print("\nLoading primary source libraries...")
     FurtonHandler.stores = {
