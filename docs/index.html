@@ -719,6 +719,16 @@ const money0 = v => money(v, Math.abs(v)>=10000?0:2);
 const pct = (v,signed=false)=> v==null?'-':(signed&&v>0?'+':'')+v.toFixed(2)+'%';
 const num = (v,d=2)=> v==null?'-':v.toFixed(d);
 const cls = v => v==null?'':v>=0?'pos':'neg';
+/* Axis + tooltip date formatting: ISO "2026-06-23" renders as "Jun 23" on
+   ticks (January ticks carry a year suffix so multi-year series stay legible)
+   and "Jun 23, 2026" in tooltip titles. Non-date labels pass through. */
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const isoShort = l => { const p=String(l||'').split('-');
+  return p.length===3&&p[0].length===4 ? MONTHS[+p[1]-1]+' '+(+p[2])+(p[1]==='01'?" '"+p[0].slice(2):'') : l; };
+const isoLong = l => { const p=String(l||'').split('-');
+  return p.length===3&&p[0].length===4 ? MONTHS[+p[1]-1]+' '+(+p[2])+', '+p[0] : l; };
+function dateTick(v){ return isoShort(this.getLabelForValue(v)); }
+const dTitle = items => items.length ? isoLong(items[0].label) : '';
 const tile = (k,v,s,colorBy)=>{
   const c = colorBy===undefined?'':cls(colorBy);
   return `<div class="tile"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s||''}</div></div>`;
@@ -731,9 +741,9 @@ function baseOpts(extra){
     responsive:true, maintainAspectRatio:false, animation:{duration:400},
     interaction:{mode:'index', intersect:false},
     plugins:{ legend:{labels:{color:'#8b93a7',boxWidth:14,boxHeight:3,font:{size:12}}},
-      tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10} },
+      tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10,callbacks:{title:dTitle}} },
     scales:{
-      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11}},grid:{color:'rgba(13,20,40,.06)'}},
+      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11},callback:dateTick},grid:{color:'rgba(13,20,40,.06)'}},
       y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'}},grid:{color:'rgba(13,20,40,.07)'}}
     }
   }, extra||{});
@@ -845,8 +855,8 @@ function renderAnalytics(d){
       {label:'Committee',data:toDollars(s.index),borderColor:'#6d7cff',backgroundColor:grad(ctxG,'109,124,255',.25,0),fill:true,borderWidth:2,pointRadius:s.dates.length<30?2.5:0,tension:.15},
       ...BENCH_KEYS.map(k=>({label:benchStyle[k][0],data:benchData[k],borderColor:benchStyle[k][1],
         borderWidth:1.5,borderDash:benchStyle[k][2],pointRadius:0,fill:false,tension:.15,hidden:!state.bench[k]})),
-    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10,callbacks:{label:c=>` ${c.dataset.label}: ${money(c.parsed.y)}`}}},scales:{
-      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11}},grid:{color:'rgba(13,20,40,.06)'}},
+    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(255,255,255,.1)',borderWidth:1,titleColor:'#e7ebf4',bodyColor:'#c6ccdb',padding:10,callbacks:{title:dTitle,label:c=>` ${c.dataset.label}: ${money(c.parsed.y)}`}}},scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:9,maxRotation:0,font:{size:11},callback:dateTick},grid:{color:'rgba(13,20,40,.06)'}},
       y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'},callback:v=>'$'+v.toLocaleString('en-US')},grid:{color:'rgba(13,20,40,.07)'}}
     }})});
   document.querySelectorAll('.bpill').forEach(b=>{
@@ -899,7 +909,7 @@ function renderOverviewCharts(d){
   mkChart('c-value',{type:'line',
     data:{labels:s.dates,datasets:[
       {label:'Value',data:s.value,borderColor:'#0ea5c8',backgroundColor:grad(ctxV,'14,165,200',.18,0),fill:true,borderWidth:2,pointRadius:s.dates.length<30?2.5:0,tension:.15},
-    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+money(c.parsed.y)}}}})});
+    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{title:dTitle,label:c=>' '+money(c.parsed.y)}}}})});
 
   const pos = d.positions.filter(p=>p.value>0);
   const palette=['#6d7cff','#38e1ff','#2fd08c','#ffb84d','#ff5d73','#b78cff','#5ad0b1','#f08fb7','#8fb7f0','#d0c05a','#7c8ca6','#4fe0e0','#e08f4f','#9fe05a','#e05ad0','#5a9fe0','#c6ccdb','#6dcf9f'];
@@ -919,18 +929,14 @@ function renderRiskCharts(d){
   mkChart('c-dd',{type:'line',
     data:{labels:s.dates,datasets:[{label:'Drawdown %',data:s.underwater,
       borderColor:'#ff5d73',backgroundColor:grad(ctxD,'255,93,115',.05,.35),fill:'origin',borderWidth:1.5,pointRadius:s.dates.length<30?2:0,tension:.1}]},
-    options:baseOpts({plugins:{legend:{display:false}}})});
+    options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{title:dTitle}}}})});
 
-  /* half-width card: full ISO dates collide at maxRotation:0, so ticks are
-     compact month-year labels and fewer of them */
-  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  /* half-width card: fewer ticks; dateTick keeps them compact ("Jun 23") */
   mkChart('c-rvol',{type:'line',
     data:{labels:s.rolling_vol.dates,datasets:[{label:'30d vol (ann.)',data:s.rolling_vol.vals,
       borderColor:'#0ea5c8',borderWidth:2,pointRadius:0,tension:.2,fill:false}]},
-    options:baseOpts({plugins:{legend:{display:false}},scales:{
-      x:{ticks:{color:'#5a6480',maxTicksLimit:6,maxRotation:0,font:{size:11},
-        callback:function(v){const l=this.getLabelForValue(v)||'';const p=l.split('-');
-          return p.length>1?MON[+p[1]-1]+" '"+p[0].slice(2):l;}},
+    options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{title:dTitle}}},scales:{
+      x:{ticks:{color:'#5a6480',maxTicksLimit:6,maxRotation:0,font:{size:11},callback:dateTick},
         grid:{color:'rgba(13,20,40,.06)'}},
       y:{ticks:{color:'#5a6480',font:{size:11,family:'JetBrains Mono'}},grid:{color:'rgba(13,20,40,.07)'}}
     }})});
