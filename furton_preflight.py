@@ -1,11 +1,15 @@
 """Monday step-0: verify both data feeds are healthy BEFORE spending screen dollars.
 
 Two checks, both of which have actually failed in production:
-  1. Tiingo settled closes for all 30 Dow names, fetched through the SAME code
-     path the screener uses (furton_server.fetch_settled_close), asserting every
-     name returns a close dated within the freshness gate. Reference prices are
-     Tiingo-sourced as of the 2026-08-17 revision; a dead feed must stop the run
-     before it starts, not strand it mid-screen.
+  1. Tiingo health via THREE spot symbols through the SAME code path the
+     screener uses (furton_server.fetch_settled_close), asserting each returns
+     a close dated within the freshness gate. Deliberately NOT all 30 names:
+     Tiingo's free tier rate-limits around 50 symbol-requests per hour
+     (observed live, HTTP 429, 2026-08-10), so a 30-name preflight plus the
+     30-name screen in the same hour would strand the screen mid-run — the
+     exact failure mode this script exists to prevent. Per-name coverage is
+     already guaranteed by the screener's own hard gate, which fails any name
+     loudly before archiving.
   2. Anthropic credit balance, via a 1-token Haiku ping. The 2026-08-10 screen
      died at name 20/30 on an empty credit balance, wasting a restart and
      archiving one phantom-quorum record before the gate caught it.
@@ -19,22 +23,26 @@ import time
 
 import furton_server as fs
 
+# First, middle, last of the roster alphabetically — three independent symbols
+# so a single delisted/renamed ticker cannot fail the whole preflight.
+SPOT_SYMBOLS = ["AAPL", "KO", "WMT"]
+
 
 def check_tiingo():
     fs.TIINGO_KEY = fs.load_tiingo_key()
-    tickers = [s["ticker"] for s in fs.DOW30]
-    print(f"Tiingo settled closes — {len(tickers)} names, "
-          f"{fs.MAX_CLOSE_AGE_DAYS}-day freshness gate")
+    print(f"Tiingo settled closes — {len(SPOT_SYMBOLS)} spot symbols, "
+          f"{fs.MAX_CLOSE_AGE_DAYS}-day freshness gate "
+          f"(3 of the hourly request budget; the screen needs 30)")
     failures = []
     t0 = time.time()
-    for t in tickers:
+    for t in SPOT_SYMBOLS:
         try:
             close, asof = fs.fetch_settled_close(t)
             print(f"  {t:6} {close:10.2f}  {asof}")
         except RuntimeError as e:
             failures.append(t)
             print(f"  {t:6} FAILED — {e}")
-        time.sleep(0.15)   # courtesy pacing, well under free-tier limits
+        time.sleep(0.15)
     print(f"  ({int(time.time() - t0)}s)")
     return failures
 

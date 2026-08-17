@@ -1,44 +1,49 @@
 {
-  "entries": [
-    {
-      "date": "2026-06-23",
-      "account_value": 10000,
-      "dow_level": 51733
-    },
-    {
-      "date": "2026-06-29",
-      "account_value": 10190.07,
-      "dow_level": 52027
-    },
-    {
-      "date": "2026-07-06",
-      "account_value": 10294.42,
-      "dow_level": 52760
-    },
-    {
-      "date": "2026-07-13",
-      "account_value": 10445.35,
-      "dow_level": 52640
-    },
-    {
-      "date": "2026-07-20",
-      "account_value": 10544.43,
-      "dow_level": 52023
-    },
-    {
-      "date": "2026-07-27",
-      "account_value": 10335.86,
-      "dow_level": 52152
-    },
-    {
-      "date": "2026-08-03",
-      "account_value": 11242.6,
-      "dow_level": 52996
-    },
-    {
-      "date": "2026-08-10",
-      "account_value": 11419.01,
-      "dow_level": 54025
-    }
-  ]
+    "entries":  [
+                    {
+                        "date":  "2026-06-23",
+                        "account_value":  10000,
+                        "dow_level":  51733
+                    },
+                    {
+                        "date":  "2026-06-29",
+                        "account_value":  10190.07,
+                        "dow_level":  52027
+                    },
+                    {
+                        "date":  "2026-07-06",
+                        "account_value":  10294.42,
+                        "dow_level":  52760
+                    },
+                    {
+                        "date":  "2026-07-13",
+                        "account_value":  10445.35,
+                        "dow_level":  52640
+                    },
+                    {
+                        "date":  "2026-07-20",
+                        "account_value":  10544.43,
+                        "dow_level":  52023
+                    },
+                    {
+                        "date":  "2026-07-27",
+                        "account_value":  10335.86,
+                        "dow_level":  52152
+                    },
+                    {
+                        "date":  "2026-08-03",
+                        "account_value":  11242.6,
+                        "dow_level":  52996
+                    },
+                    {
+                        "date":  "2026-08-10",
+                        "account_value":  11419.01,
+                        "dow_level":  54025
+                    },
+                    {
+                        "date":  "2026-08-17",
+                        "account_value":  11137.94,
+                        "dow_level":  53587
+                    }
+                ]
 }
