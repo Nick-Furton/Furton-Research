@@ -198,9 +198,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .attrib-foot b{font-family:var(--mono);font-weight:600;color:#131a2e}
 
 /* committee: blind votes on the current holdings (dark section) */
-.votes{margin-top:26px}
-.votes-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px 18px;flex-wrap:wrap;margin-bottom:14px}
-.votes-head h3{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;max-width:72ch}
+.votes{margin-top:30px}
+.votes-head{margin-bottom:18px}
+.votes-head h3{font-size:clamp(18px,2.2vw,27px);font-weight:800;letter-spacing:-.02em;line-height:1.3;color:var(--text)}
 .votegrid-scroll{overflow-x:auto;padding-bottom:6px}
 .votegrid{display:grid;gap:3px;min-width:560px}
 .votegrid .vh{display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0 8px;color:var(--muted);font-size:10.5px}
@@ -208,10 +208,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .votegrid .vt{display:flex;flex-direction:column;justify-content:center;padding-right:8px;min-width:0}
 .votegrid .vt b{font-weight:600;font-size:12.5px}
 .votegrid .vt small{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.votegrid abbr.vc{display:block;height:30px;border-radius:6px;background:rgba(255,255,255,.05);padding:0;margin:0;text-decoration:none;cursor:default}
-.votegrid abbr.vc.buy{background:rgba(47,208,140,var(--a))}
-.votegrid abbr.vc.novote{background:transparent;border:1px dashed rgba(255,255,255,.1)}
-.votegrid abbr.vc:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.votegrid .vc{display:block;height:30px;border-radius:6px;background:rgba(255,255,255,.16)}
+.votegrid .vc.buy{background:var(--vb)}
+.votegrid .vc.novote{background:transparent;border:1px dashed rgba(255,255,255,.1)}
 .votes .legend i.b{border-radius:3px}
 .votes .legend i.no{background:transparent;border:1px dashed rgba(255,255,255,.25)}
 
@@ -651,7 +650,7 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
     </div>
 
     <div class="votes" id="votes" style="display:none">
-      <div class="votes-head"><h3>What committee members thought about this week's holdings before they deliberated</h3><span class="asof" id="votesAsOf"></span></div>
+      <div class="votes-head"><h3>What committee members thought about this week's holdings before they deliberated</h3></div>
       <div class="votegrid-scroll" id="votegridwrap"></div>
       <div class="legend" id="votesLegend"></div>
     </div>
@@ -985,14 +984,15 @@ function renderAttribution(d){
 }
 
 /* committee: each member's blind vote on the names the account holds,
-   before the deliberation round. Color only, no scores: green = said buy,
-   deeper green = stronger conviction; faint = said don't buy. */
+   before the deliberation round. Color only, no scores or tooltips: green =
+   said buy, shaded across the full 1 to 9 conviction scale (a 1 is still
+   visibly green, just the weakest), light grey = said don't buy,
+   dashed = abstained. */
 const INV_COLORS={buffett:'var(--buffett)',marks:'var(--marks)',greenblatt:'var(--green)',wood:'var(--wood)',aschenbrenner:'var(--aschen)'};
 function renderCommittee(c){
   if(!c||!Array.isArray(c.rows)||!c.rows.length||!Array.isArray(c.investors)) return;
   if(!c.rows.some(r=>r.votes&&Object.keys(r.votes).length)) return;
   $('votes').style.display='block';
-  $('votesAsOf').textContent=(c.date||'')+' screen';
   let html=`<div class="votegrid" style="grid-template-columns:minmax(96px,1.3fr) repeat(${c.investors.length},minmax(46px,1fr))">`;
   html+='<div></div>';
   for(const v of c.investors)
@@ -1001,21 +1001,23 @@ function renderCommittee(c){
     html+=`<div class="vt"><b>${r.ticker}</b><small>${r.name||''}</small></div>`;
     for(const v of c.investors){
       const x=r.votes[v.key];
-      if(!x){html+=`<abbr class="vc novote" title="${v.short}: no vote, outside this member's coverage"></abbr>`;continue;}
+      if(!x){html+=`<div class="vc novote" role="img" aria-label="${v.short}: abstained"></div>`;continue;}
       if(x.vote==='buy'){
         const s=x.strength!=null?Math.max(1,Math.min(9,x.strength)):5;
-        html+=`<abbr class="vc buy" style="--a:${(.12+(s-1)/8*.85).toFixed(2)}" title="${v.short}: buy"></abbr>`;
+        const t=(s-1)/8;  /* 1 -> 0, 9 -> 1: lightness and opacity climb together */
+        const vb=`hsla(155,${Math.round(42+t*24)}%,${Math.round(24+t*34)}%,${(.35+t*.6).toFixed(2)})`;
+        html+=`<div class="vc buy" style="--vb:${vb}" role="img" aria-label="${v.short}: buy"></div>`;
       }else{
-        html+=`<abbr class="vc" title="${v.short}: don't buy"></abbr>`;
+        html+=`<div class="vc" role="img" aria-label="${v.short}: don't buy"></div>`;
       }
     }
   }
   html+='</div>';
   $('votegridwrap').innerHTML=html;
   $('votesLegend').innerHTML=
-    '<span><i class="b" style="background:rgba(47,208,140,.85)"></i>said buy, deeper green = stronger conviction</span>'+
-    '<span><i class="b" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)"></i>said don\'t buy</span>'+
-    '<span><i class="b no"></i>no vote, outside that member\'s coverage</span>';
+    '<span><i class="b" style="background:hsla(155,60%,50%,.85)"></i>said buy, deeper green = stronger conviction</span>'+
+    '<span><i class="b" style="background:rgba(255,255,255,.16)"></i>said don\'t buy</span>'+
+    '<span><i class="b no"></i>abstained</span>';
 }
 
 function renderRiskCharts(d){
