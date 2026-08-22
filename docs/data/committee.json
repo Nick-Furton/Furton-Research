@@ -1,0 +1,344 @@
+{
+ "date": "2026-08-17",
+ "holdings_date": "2026-08-17",
+ "investors": [
+  {
+   "key": "buffett",
+   "name": "Warren Buffett",
+   "short": "Buffett",
+   "initial": "W"
+  },
+  {
+   "key": "marks",
+   "name": "Howard Marks",
+   "short": "Marks",
+   "initial": "H"
+  },
+  {
+   "key": "greenblatt",
+   "name": "Joel Greenblatt",
+   "short": "Greenblatt",
+   "initial": "J"
+  },
+  {
+   "key": "wood",
+   "name": "Cathie Wood",
+   "short": "Wood",
+   "initial": "C"
+  },
+  {
+   "key": "aschenbrenner",
+   "name": "Leopold Aschenbrenner",
+   "short": "Aschenbrenner",
+   "initial": "L"
+  }
+ ],
+ "rows": [
+  {
+   "ticker": "AMZN",
+   "name": "Amazon.com Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "aschenbrenner": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "buy",
+     "strength": 8
+    }
+   }
+  },
+  {
+   "ticker": "GOOGL",
+   "name": "Alphabet Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "aschenbrenner": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "buy",
+     "strength": 7
+    }
+   }
+  },
+  {
+   "ticker": "NVDA",
+   "name": "NVIDIA Corp.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "aschenbrenner": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "buy",
+     "strength": 8
+    }
+   }
+  },
+  {
+   "ticker": "MSFT",
+   "name": "Microsoft Corp.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "aschenbrenner": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "buy",
+     "strength": 7
+    }
+   }
+  },
+  {
+   "ticker": "CRM",
+   "name": "Salesforce Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "aschenbrenner": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "buy",
+     "strength": 7
+    }
+   }
+  },
+  {
+   "ticker": "AXP",
+   "name": "American Express Co.",
+   "votes": {
+    "buffett": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 2
+    }
+   }
+  },
+  {
+   "ticker": "MCD",
+   "name": "McDonald's Corp.",
+   "votes": {
+    "buffett": {
+     "vote": "buy",
+     "strength": 7
+    },
+    "marks": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 2
+    }
+   }
+  },
+  {
+   "ticker": "CVX",
+   "name": "Chevron Corp.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 2
+    }
+   }
+  },
+  {
+   "ticker": "HON",
+   "name": "Honeywell International Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 3
+    }
+   }
+  },
+  {
+   "ticker": "NKE",
+   "name": "Nike Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 2
+    }
+   }
+  },
+  {
+   "ticker": "AMGN",
+   "name": "Amgen Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 3
+    }
+   }
+  },
+  {
+   "ticker": "DIS",
+   "name": "Walt Disney Co.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 4
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 3
+    }
+   }
+  },
+  {
+   "ticker": "MRK",
+   "name": "Merck & Co. Inc.",
+   "votes": {
+    "buffett": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "marks": {
+     "vote": "buy",
+     "strength": 6
+    },
+    "greenblatt": {
+     "vote": "pass",
+     "strength": 3
+    },
+    "wood": {
+     "vote": "pass",
+     "strength": 2
+    }
+   }
+  }
+ ]
+}

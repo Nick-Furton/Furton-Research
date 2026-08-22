@@ -183,6 +183,38 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .legend{display:flex;gap:14px;margin-top:10px;color:var(--dim);font-size:11.5px;flex-wrap:wrap}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 
+/* unrealized P&L by position (overview, light section) */
+.attrib{display:grid;gap:4px;padding-top:2px}
+.attrib-row{display:grid;grid-template-columns:52px 1fr 124px;gap:12px;align-items:center;min-height:24px}
+.attrib-row .t{font-weight:600;font-size:12.5px;line-height:1.15}
+.attrib-track{position:relative;height:8px}
+.attrib-track::before{content:"";position:absolute;left:var(--zero);top:-5px;bottom:-5px;width:1px;background:rgba(13,20,40,.25)}
+.attrib-bar{position:absolute;top:0;height:8px;border-radius:2px;transform:scaleX(0);transition:transform .45s var(--eo)}
+.attrib-bar.pos{background:#2fd08c;transform-origin:left}
+.attrib-bar.neg{background:#ff5d73;transform-origin:right}
+.attrib-row .v{font-family:var(--mono);font-size:12.5px;text-align:right}
+.attrib-sub{color:#5a6480;font-size:10.5px;display:inline-block;min-width:46px;text-align:right}
+.attrib-foot{margin-top:10px;padding-top:10px;border-top:1px solid rgba(13,20,40,.1);font-size:12px;color:#5a6480;display:flex;justify-content:space-between;gap:6px 12px;flex-wrap:wrap}
+.attrib-foot b{font-family:var(--mono);font-weight:600;color:#131a2e}
+
+/* committee: blind votes on the current holdings (dark section) */
+.votes{margin-top:26px}
+.votes-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px 18px;flex-wrap:wrap;margin-bottom:14px}
+.votes-head h3{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;max-width:72ch}
+.votegrid-scroll{overflow-x:auto;padding-bottom:6px}
+.votegrid{display:grid;gap:3px;min-width:560px}
+.votegrid .vh{display:flex;flex-direction:column;align-items:center;gap:5px;padding:2px 0 8px;color:var(--muted);font-size:10.5px}
+.votegrid .vh b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:800 12px Inter,sans-serif;color:var(--c);border:1.5px solid var(--c)}
+.votegrid .vt{display:flex;flex-direction:column;justify-content:center;padding-right:8px;min-width:0}
+.votegrid .vt b{font-weight:600;font-size:12.5px}
+.votegrid .vt small{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.votegrid abbr.vc{display:block;height:30px;border-radius:6px;background:rgba(255,255,255,.05);padding:0;margin:0;text-decoration:none;cursor:default}
+.votegrid abbr.vc.buy{background:rgba(47,208,140,var(--a))}
+.votegrid abbr.vc.novote{background:transparent;border:1px dashed rgba(255,255,255,.1)}
+.votegrid abbr.vc:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.votes .legend i.b{border-radius:3px}
+.votes .legend i.no{background:transparent;border:1px dashed rgba(255,255,255,.25)}
+
 /* ───────── section scaffolding ───────── */
 section{position:relative}
 .section-pad{padding:96px 0}
@@ -489,8 +521,8 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
     <!-- Overview -->
     <div class="apanel active" id="ap-overview">
       <div class="grid2">
-        <div class="card"><h3>Account value</h3>
-          <div class="chartbox"><canvas id="c-value"></canvas></div></div>
+        <div class="card"><h3>Unrealized P&amp;L by position <small>vs fill cost, at latest closes</small></h3>
+          <div class="attrib" id="attrib"></div></div>
         <div class="card"><h3>Allocation</h3>
           <div class="chartbox"><canvas id="c-alloc"></canvas></div></div>
         <div class="card span2"><h3>Monthly returns <small>%</small></h3>
@@ -616,6 +648,12 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
         <div class="inv-frame">AI infrastructure, regime shifts, scaling</div>
         <div class="inv-arrow">Profile →</div>
       </a>
+    </div>
+
+    <div class="votes" id="votes" style="display:none">
+      <div class="votes-head"><h3>What committee members thought about this week's holdings before they deliberated</h3><span class="asof" id="votesAsOf"></span></div>
+      <div class="votegrid-scroll" id="votegridwrap"></div>
+      <div class="legend" id="votesLegend"></div>
     </div>
   </div>
 </section>
@@ -810,10 +848,11 @@ async function getJSON(path){
 }
 
 async function boot(){
-  const [an, perf, holdings] = await Promise.all([
-    getJSON('data/analytics.json'), getJSON('data/performance.json'), getJSON('data/holdings.json')]);
+  const [an, perf, holdings, committee] = await Promise.all([
+    getJSON('data/analytics.json'), getJSON('data/performance.json'), getJSON('data/holdings.json'), getJSON('data/committee.json')]);
   state.an = an;
   renderTargets(holdings);
+  renderCommittee(committee);
   if (an && an.series && an.series.dates.length > 1 && typeof Chart !== 'undefined'){
     renderAnalytics(an);
   } else {
@@ -898,19 +937,13 @@ function renderAnalytics(d){
   tall+='<tr><td>Year</td>'+years.map(y=>ycell(ytot[y])).join('')+'</tr></table>';
   $('hm-monthly').innerHTML=wide+tall;
 
-  renderRisk(d); renderPositions(d); renderRecord(d);
+  renderAttribution(d); renderRisk(d); renderPositions(d); renderRecord(d);
 }
 
 /* Charts inside the collapsed area are created lazily, when their container
    becomes visible, Chart.js cannot size a canvas inside display:none. */
 function renderOverviewCharts(d){
-  const h = d.headline, s = d.series;
-  const ctxV = $('c-value').getContext('2d');
-  mkChart('c-value',{type:'line',
-    data:{labels:s.dates,datasets:[
-      {label:'Value',data:s.value,borderColor:'#0ea5c8',backgroundColor:grad(ctxV,'14,165,200',.18,0),fill:true,borderWidth:2,pointRadius:s.dates.length<30?2.5:0,tension:.15},
-    ]},options:baseOpts({plugins:{legend:{display:false},tooltip:{callbacks:{title:dTitle,label:c=>' '+money(c.parsed.y)}}}})});
-
+  const h = d.headline;
   const pos = d.positions.filter(p=>p.value>0);
   const palette=['#6d7cff','#38e1ff','#2fd08c','#ffb84d','#ff5d73','#b78cff','#5ad0b1','#f08fb7','#8fb7f0','#d0c05a','#7c8ca6','#4fe0e0','#e08f4f','#9fe05a','#e05ad0','#5a9fe0','#c6ccdb','#6dcf9f'];
   mkChart('c-alloc',{type:'doughnut',
@@ -921,6 +954,68 @@ function renderOverviewCharts(d){
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{position:'right',labels:{color:'#5a6480',boxWidth:10,font:{size:11}}},
         tooltip:{callbacks:{label:c=>` ${c.label}: ${money(c.parsed)} (${(100*c.parsed/h.value).toFixed(1)}%)`}}}}});
+}
+
+/* unrealized P&L per position: sign-colored bars from a shared zero line */
+function renderAttribution(d){
+  const wrap=$('attrib');
+  if(!wrap) return;
+  const rows=(d.positions||[]).filter(p=>p.unreal!=null).sort((a,b)=>b.unreal-a.unreal);
+  if(!rows.length){wrap.innerHTML='<div class="small">No filled positions yet.</div>';return;}
+  const maxPos=Math.max(0,...rows.map(p=>p.unreal)), maxNeg=Math.max(0,...rows.map(p=>-p.unreal));
+  const span=maxPos+maxNeg||1, zero=(maxNeg/span*100);
+  let html='';
+  for(const p of rows){
+    const w=Math.abs(p.unreal)/span*100, up=p.unreal>=0;
+    html+=`<div class="attrib-row">
+      <div class="t" title="${p.name||''}">${p.symbol}</div>
+      <div class="attrib-track" style="--zero:${zero.toFixed(2)}%"><div class="attrib-bar ${up?'pos':'neg'}" style="left:${(up?zero:zero-w).toFixed(2)}%;width:${w.toFixed(2)}%"></div></div>
+      <div class="v ${cls(p.unreal)}">${money(p.unreal)} <span class="attrib-sub">${pct(p.unreal_pct,true)}</span></div>
+    </div>`;
+  }
+  const total=rows.reduce((s,p)=>s+p.unreal,0);
+  const inc=d.income&&d.income.realized_and_income;
+  html+=`<div class="attrib-foot"><span>Unrealized, all positions: <b class="${cls(total)}">${money(total)}</b></span>`+
+    (inc!=null?`<span>Realized + income to date, ledger: <b>${money(inc)}</b>, reinvested</span>`:'')+'</div>';
+  wrap.innerHTML=html;
+  // scaleX entrance, same compositor-only pattern as the target-weight bars
+  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+    wrap.querySelectorAll('.attrib-bar').forEach((el,i)=>{el.style.transitionDelay=Math.min(i*30,300)+'ms';el.style.transform='scaleX(1)';});
+  });});
+}
+
+/* committee: each member's blind vote on the names the account holds,
+   before the deliberation round. Color only, no scores: green = said buy,
+   deeper green = stronger conviction; faint = said don't buy. */
+const INV_COLORS={buffett:'var(--buffett)',marks:'var(--marks)',greenblatt:'var(--green)',wood:'var(--wood)',aschenbrenner:'var(--aschen)'};
+function renderCommittee(c){
+  if(!c||!Array.isArray(c.rows)||!c.rows.length||!Array.isArray(c.investors)) return;
+  if(!c.rows.some(r=>r.votes&&Object.keys(r.votes).length)) return;
+  $('votes').style.display='block';
+  $('votesAsOf').textContent=(c.date||'')+' screen';
+  let html=`<div class="votegrid" style="grid-template-columns:minmax(96px,1.3fr) repeat(${c.investors.length},minmax(46px,1fr))">`;
+  html+='<div></div>';
+  for(const v of c.investors)
+    html+=`<div class="vh" style="--c:${INV_COLORS[v.key]||'var(--acc)'}"><b>${v.initial}</b>${v.short}</div>`;
+  for(const r of c.rows){
+    html+=`<div class="vt"><b>${r.ticker}</b><small>${r.name||''}</small></div>`;
+    for(const v of c.investors){
+      const x=r.votes[v.key];
+      if(!x){html+=`<abbr class="vc novote" title="${v.short}: no vote, outside this member's coverage"></abbr>`;continue;}
+      if(x.vote==='buy'){
+        const s=x.strength!=null?Math.max(1,Math.min(9,x.strength)):5;
+        html+=`<abbr class="vc buy" style="--a:${(.12+(s-1)/8*.85).toFixed(2)}" title="${v.short}: buy"></abbr>`;
+      }else{
+        html+=`<abbr class="vc" title="${v.short}: don't buy"></abbr>`;
+      }
+    }
+  }
+  html+='</div>';
+  $('votegridwrap').innerHTML=html;
+  $('votesLegend').innerHTML=
+    '<span><i class="b" style="background:rgba(47,208,140,.85)"></i>said buy, deeper green = stronger conviction</span>'+
+    '<span><i class="b" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)"></i>said don\'t buy</span>'+
+    '<span><i class="b no"></i>no vote, outside that member\'s coverage</span>';
 }
 
 function renderRiskCharts(d){

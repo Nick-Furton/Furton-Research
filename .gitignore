@@ -20,6 +20,7 @@
 !/furton_tradelog.html
 !/furton_performance.html
 !/furton_capture_positions.py
+!/furton_publish_committee.py
 
 # The public site, served by GitHub Pages from /docs (moved off Netlify
 # 2026-07-06). Contains ONLY already-public content: the site HTML, the
