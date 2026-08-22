@@ -228,12 +228,11 @@ details.holding .holding-row{border-bottom:none}
 .holding-caret::before{content:"";position:absolute;inset:0;margin:auto;width:0;height:0;border-left:4.5px solid transparent;border-right:4.5px solid transparent;border-top:6px solid var(--dim);transition:border-top-color .15s ease}
 details.holding[open] .holding-caret{transform:rotate(180deg)}
 details.holding>summary:hover .holding-caret::before{border-top-color:var(--text)}
-.holding-statement{padding:4px 6px 22px 66px;max-width:80ch}
+.holding-statement{padding:4px 6px 22px}
 .holding-statement .asof{display:block;margin-bottom:10px}
 .holding-statement p{font-size:13.5px;line-height:1.75;color:var(--muted);margin:0 0 12px;text-wrap:pretty}
 .holding-statement p:last-child{margin-bottom:0}
 .holding-statement b{color:var(--text);font-weight:600}
-@media(max-width:680px){.holding-statement{padding-left:6px}}
 @media(max-width:680px){
   .holding-row,.holdings-head{grid-template-columns:34px 1fr 70px 12px}
   .holding-bar-track{display:none}
@@ -574,7 +573,7 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
   <div class="wrap">
     <div class="sec-head">
       <h2>The committee's <em>target weights</em>.</h2>
-      <p class="sec-lead">These are the committee's <strong style="color:var(--text)">target weights</strong>: conviction-weighted from the latest screen, not the live brokerage balances. Buys are sized in proportion to conviction; the committee is long-only by construction. The actual filled positions (shares and market value) are tracked in the <a href="#analytics" style="color:var(--acc2)">analytics</a> above and reconciled against these targets. Each row expands to the committee's latest official statement on the name.</p>
+      <p class="sec-lead">These are the committee's <strong style="color:var(--text)">target weights</strong>: conviction-weighted from the latest screen, not the live brokerage balances. Buys are sized in proportion to conviction; the committee is long-only by construction. The actual filled positions (shares and market value) are tracked in the <a href="#analytics" style="color:var(--acc2)">analytics</a> above and reconciled against these targets. Click a row to see the committee's last statement.</p>
     </div>
     <div class="card">
       <div id="holdingsWrap">
