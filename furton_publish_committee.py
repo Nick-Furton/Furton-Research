@@ -1,5 +1,10 @@
 """Publish the committee's blind votes on the current holdings.
 
+NOTE: the site section this fed (the blind-vote grid) was archived on
+2026-08-22 (it lives in git history at 9e4ecd9); the script is kept because
+its screen-reading plumbing is the starting point for publishing committee
+statements if that ships. It no longer needs to run weekly.
+
 Reads the newest screens/screen_YYYY-MM-DD.json plus the published
 holdings.json and writes data/committee.json for the site (both the
 furton_website/ staging copy and the deployed docs/ copy): for each name the
