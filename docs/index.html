@@ -207,9 +207,9 @@ section{position:relative}
 .asof{font-family:var(--mono);font-size:11.5px;color:var(--dim);letter-spacing:.04em}
 
 /* ───────── target portfolio ───────── */
-.holdings-head{display:grid;grid-template-columns:48px 1fr 220px 84px;gap:18px;padding:0 6px 10px;border-bottom:1px solid rgba(255,255,255,.14);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.holdings-head{display:grid;grid-template-columns:48px 1fr 220px 84px 14px;gap:18px;padding:0 6px 10px;border-bottom:1px solid rgba(255,255,255,.14);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .holdings-head span:last-child{text-align:right}
-.holding-row{display:grid;grid-template-columns:48px 1fr 220px 84px;gap:18px;align-items:center;padding:13px 6px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
+.holding-row{display:grid;grid-template-columns:48px 1fr 220px 84px 14px;gap:18px;align-items:center;padding:13px 6px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}
 .holding-row:hover{background:rgba(255,255,255,.025)}
 .holding-rank{font-family:var(--mono);font-size:12px;color:var(--dim)}
 .holding-ticker{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.02em}
@@ -218,8 +218,24 @@ section{position:relative}
 .holding-bar-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px;transform:scaleX(0);transform-origin:left;transition:transform .6s var(--eo)}
 .holding-weight{font-family:var(--mono);font-weight:600;font-size:16px;text-align:right;color:var(--acc2)}
 .holdings-empty{padding:44px 20px;text-align:center;color:var(--dim);font-family:var(--mono);font-size:12.5px;border:1px dashed rgba(255,255,255,.14);border-radius:12px}
+/* expandable committee statement per holding */
+details.holding{border-bottom:1px solid rgba(255,255,255,.05)}
+details.holding>summary{list-style:none;display:block;cursor:pointer}
+details.holding>summary::-webkit-details-marker{display:none}
+details.holding>summary:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+details.holding .holding-row{border-bottom:none}
+.holding-caret{width:14px;height:14px;justify-self:end;position:relative;transition:transform .18s var(--eo)}
+.holding-caret::before{content:"";position:absolute;inset:0;margin:auto;width:0;height:0;border-left:4.5px solid transparent;border-right:4.5px solid transparent;border-top:6px solid var(--dim);transition:border-top-color .15s ease}
+details.holding[open] .holding-caret{transform:rotate(180deg)}
+details.holding>summary:hover .holding-caret::before{border-top-color:var(--text)}
+.holding-statement{padding:4px 6px 22px 66px;max-width:80ch}
+.holding-statement .asof{display:block;margin-bottom:10px}
+.holding-statement p{font-size:13.5px;line-height:1.75;color:var(--muted);margin:0 0 12px;text-wrap:pretty}
+.holding-statement p:last-child{margin-bottom:0}
+.holding-statement b{color:var(--text);font-weight:600}
+@media(max-width:680px){.holding-statement{padding-left:6px}}
 @media(max-width:680px){
-  .holding-row,.holdings-head{grid-template-columns:34px 1fr 70px}
+  .holding-row,.holdings-head{grid-template-columns:34px 1fr 70px 12px}
   .holding-bar-track{display:none}
   .holdings-head span:nth-child(3){display:none}
 }
@@ -558,7 +574,7 @@ document.querySelector('.nav-menu .sheet')?.addEventListener('click',e=>{if(e.ta
   <div class="wrap">
     <div class="sec-head">
       <h2>The committee's <em>target weights</em>.</h2>
-      <p class="sec-lead">These are the committee's <strong style="color:var(--text)">target weights</strong>: conviction-weighted from the latest screen, not the live brokerage balances. Buys are sized in proportion to conviction; the committee is long-only by construction. The actual filled positions (shares and market value) are tracked in the <a href="#analytics" style="color:var(--acc2)">analytics</a> above and reconciled against these targets.</p>
+      <p class="sec-lead">These are the committee's <strong style="color:var(--text)">target weights</strong>: conviction-weighted from the latest screen, not the live brokerage balances. Buys are sized in proportion to conviction; the committee is long-only by construction. The actual filled positions (shares and market value) are tracked in the <a href="#analytics" style="color:var(--acc2)">analytics</a> above and reconciled against these targets. Each row expands to the committee's latest official statement on the name.</p>
     </div>
     <div class="card">
       <div id="holdingsWrap">
@@ -824,10 +840,10 @@ async function getJSON(path){
 }
 
 async function boot(){
-  const [an, perf, holdings] = await Promise.all([
-    getJSON('data/analytics.json'), getJSON('data/performance.json'), getJSON('data/holdings.json')]);
+  const [an, perf, holdings, stmts] = await Promise.all([
+    getJSON('data/analytics.json'), getJSON('data/performance.json'), getJSON('data/holdings.json'), getJSON('data/statements.json')]);
   state.an = an;
-  renderTargets(holdings);
+  renderTargets(holdings, stmts);
   if (an && an.series && an.series.dates.length > 1 && typeof Chart !== 'undefined'){
     renderAnalytics(an);
   } else {
@@ -1116,7 +1132,7 @@ const DOW30_NAMES={
   MSFT:"Microsoft",NKE:"Nike",NVDA:"NVIDIA",PG:"Procter & Gamble",SHW:"Sherwin-Williams",
   TRV:"Travelers",UNH:"UnitedHealth",V:"Visa",VZ:"Verizon",WMT:"Walmart",
 };
-function renderTargets(data){
+function renderTargets(data, stmts){
   let list=[];
   if(Array.isArray(data))list=data;
   else if(data&&Array.isArray(data.holdings))list=data.holdings;
@@ -1132,15 +1148,28 @@ function renderTargets(data){
     wrap.innerHTML='<div class="holdings-empty">Holdings will appear here once the first weekly portfolio is published.</div>';
     asOf.textContent=''; return;
   }
+  /* the committee's latest official statement per name: letterhead already
+     stripped by furton_publish_statements.py, body shown verbatim */
+  const escSt=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const stBody=t=>escSt(t).split(/\n{2,}/).map(p=>'<p>'+p
+    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+    .replace(/\*([^*\n]+)\*/g,'<i>$1</i>')
+    .replace(/\n/g,'<br>')+'</p>').join('');
+  const statements=new Map(((stmts&&Array.isArray(stmts.rows))?stmts.rows:[])
+    .filter(r=>r&&r.ticker&&(r.statement||'').trim())
+    .map(r=>[r.ticker.toUpperCase(),r]));
+
   const maxW=Math.max(...holdings.map(x=>x.weight));
   let html='<div class="holdings-head"><span>#</span><span>Position</span><span>Target weight</span><span>%</span></div>';
   holdings.forEach((x,i)=>{
-    html+=`<div class="holding-row">
+    const st=statements.get(x.ticker);
+    const row=`<div class="holding-row">
       <div class="holding-rank">${String(i+1).padStart(2,'0')}</div>
       <div><div class="holding-ticker">${x.ticker}</div><div class="holding-name">${x.name}</div></div>
       <div class="holding-bar-track"><div class="holding-bar-fill" style="width:${(x.weight/maxW*100).toFixed(1)}%"></div></div>
-      <div class="holding-weight">${x.weight.toFixed(1)}%</div>
+      <div class="holding-weight">${x.weight.toFixed(1)}%</div>${st?'<span class="holding-caret" aria-hidden="true"></span>':''}
     </div>`;
+    html+=st?`<details class="holding"><summary>${row}</summary><div class="holding-statement"><span class="asof">Official committee statement / ${st.screen_date||''} screen</span>${stBody(st.statement)}</div></details>`:row;
   });
   wrap.innerHTML=html;
   const total=holdings.reduce((s,x)=>s+x.weight,0);

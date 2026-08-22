@@ -1,0 +1,83 @@
+{
+ "holdings_date": "2026-08-17",
+ "rows": [
+  {
+   "ticker": "AMZN",
+   "name": "Amazon.com Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "The Committee has resolved, by substantial majority, to assign AMZN a BUY rating with a conviction score of 0.871. The dominant argument carrying the majority is that Amazon's three core franchises — AWS at 31% global cloud share with deeply entrenched switching costs, 38.5% U.S. e-commerce dominance anchored by the Prime ecosystem, and a rapidly scaling advertising business — now demonstrate earnings power commensurate with the company's valuation, as evidenced by an EV/EBITDA multiple sitting 43% below its ten-year median. AWS's positioning as critical physical infrastructure for the accelerating AI buildout further strengthens the forward case. The most significant dissent, advanced by Mr. Greenblatt, argued that at $2.83 trillion in market capitalization the business defies reliable return-on-capital and earnings-yield analysis, warranting a PASS. This view did not prevail because the Committee judged that normalized earnings have materially closed the gap to price, transforming what was historically a speculative premium into a demonstrable valuation. The Committee recommends initiating a BUY position at current levels."
+  },
+  {
+   "ticker": "GOOGL",
+   "name": "Alphabet Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns Alphabet Inc. a BUY recommendation with a conviction score of 0.75. The dominant argument carrying the majority held that Alphabet's trailing P/E of approximately 17 represents a value-grade entry point for a company exhibiting 82% Cloud growth, a $514 billion Cloud backlog, and accelerating AI revenue penetration through its Gemini ecosystem, Waymo optionality, and unmatched infrastructure scale — making current earnings an inadequate proxy for forward value creation. The most significant dissent, advanced by members citing an EV/FCF ratio of 77 times and the absence of a margin of safety at a $4.22 trillion market cap, argued that no competitive moat justifies paying a price that embeds speculative assumptions about capital-intensive AI returns. This dissent did not prevail because the majority judged that the trailing earnings multiple, rather than the EV/FCF figure, more accurately reflects normalized owner economics given extraordinary but transitory capital expenditure. The Committee recommends initiating a BUY position at current levels."
+  },
+  {
+   "ticker": "NVDA",
+   "name": "NVIDIA Corp.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns NVIDIA a BUY rating with a composite score of 0.733. The dominant argument, advanced by Aschenbrenner, Wood, and Marks and carrying the majority, holds that NVIDIA's unrivaled position as the central infrastructure layer of an unprecedented AI buildout — evidenced by $41.1 billion in quarterly data center revenue, 87% accelerator market share, and 72% gross margins — justifies current valuations, with a 25x forward earnings multiple arguably already discounting meaningful uncertainty. The most significant dissent came from Buffett and Greenblatt, who argued that owner earnings five years hence cannot be projected with sufficient confidence at a $5.4 trillion market capitalization, and that no margin of safety exists if competitive or cyclical dynamics shift. This dissent did not prevail because the majority judged that the scale and durability of NVIDIA's CUDA-ecosystem moat, combined with still-accelerating demand, render traditional valuation conservatism a greater risk than the premium paid. The Committee recommends initiating a BUY position with disciplined sizing reflecting elevated cycle-stage awareness."
+  },
+  {
+   "ticker": "MSFT",
+   "name": "Microsoft Corp.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee adopts a BUY position on Microsoft Corporation with a conviction score of 0.56, reflecting a narrow but decisive majority. The dominant argument, advanced by Leopold Aschenbrenner and Cathie Wood, held that Microsoft's position as the central enterprise AI platform — anchored by Azure's 39% growth, the OpenAI partnership, and Copilot's unprecedented monetization scale — represents a structural regime shift in earnings power that renders backward-looking valuation multiples misleading. The most significant dissent, articulated by Warren Buffett, Howard Marks, and Joel Greenblatt, cautioned that at approximately 55 times free cash flow, the stock demands flawless execution on AI monetization timelines and leaves no margin of safety should adoption lag expectations. This dissent did not prevail because the majority judged the compounding trajectory of AI revenue sufficiently probable to justify the current premium. The Committee recommends initiating a BUY position while acknowledging elevated valuation risk and advising disciplined position sizing accordingly."
+  },
+  {
+   "ticker": "CRM",
+   "name": "Salesforce Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee adopts a BUY position on Salesforce with moderate conviction. The dominant argument, advanced by Howard Marks and supported by Cathie Wood, holds that at approximately 14x forward earnings, the market insufficiently prices a business generating $14.4 billion in free cash flow with 78% gross margins, real switching-cost moats, and a nascent but rapidly scaling Agentforce AI platform ($1.4B ARR, 114% YoY growth). The most significant dissent came from Warren Buffett and Joel Greenblatt, who argued that Salesforce at current levels represents a good business at a merely fair price rather than a bargain, with single-digit organic revenue growth insufficient to justify conviction. This dissent did not prevail because the majority judged that static valuation metrics underweight the asymmetric upside from AI-agent monetization against a backdrop of already-compressed expectations. The Committee recommends initiating a measured position, with particular attention to Agentforce ARR trajectory and competitive dynamics with Microsoft Dynamics as ongoing monitoring triggers."
+  },
+  {
+   "ticker": "AXP",
+   "name": "American Express Co.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee adopts a BUY position on American Express Company with a conviction score of 0.353. The dominant argument carrying the majority rests on the enduring competitive superiority of Amex's closed-loop network, which affords the company unrivaled control over both merchant and cardholder relationships, generating durable pricing power and compounding economics that justify a premium valuation — particularly when assessed on an EV/FCF basis of approximately 15.76x rather than headline EV/EBITDA figures distorted by financial services capital structure. The most significant dissent, voiced consistently by three committee members, centered on the contention that the franchise's quality is already fully reflected in a roughly 20x trailing earnings multiple, leaving inadequate margin of safety in a constructive but late-cycle environment. This dissent did not prevail because the majority judged that moat durability and compounding potential outweigh near-term valuation compression risk. The Committee recommends initiating a measured position in AXP, with sizing calibrated to the moderate conviction level."
+  },
+  {
+   "ticker": "MCD",
+   "name": "McDonald's Corp.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns McDonald's Corporation (MCD) a final score of 0.353 and recommends a **BUY** position. The dominant argument, advanced by Mr. Buffett and carrying the majority, holds that McDonald's 95% franchised, royalty-collecting model constitutes a durable competitive moat with genuine pricing power, and that a 21.5x forward earnings multiple, while not cheap, represents a reasonable price for a business of this caliber — one that reliably compounds shareholder value through dividends and buybacks. The most significant dissent came from Messrs. Marks and Greenblatt, who argued that McDonald's quality is already fully reflected in the current valuation, citing 17x EV/EBITDA, $53 billion in net debt, and approximately 36x free cash flow as evidence of limited margin of safety. This dissent did not prevail because the Committee judged that the extraordinary durability and capital efficiency of the franchise structure justify a sustained premium, making a modest positive expected return the more probable outcome. The Committee recommends initiating a position at current levels with disciplined sizing appropriate to the moderate conviction reflected in the score."
+  },
+  {
+   "ticker": "CVX",
+   "name": "Chevron Corp.",
+   "screen_date": "2026-08-17",
+   "statement": "The Committee assigns Chevron Corporation (CVX) a final rating of **BUY** with a conviction score of **0.333**, reflecting a narrow and qualified endorsement. The position carried principally on the cycle-aware thesis advanced by Howard Marks, who argued that market sentiment has overcorrected against the commodity sector, leaving Chevron's valuation attractive on a risk-adjusted basis even after accounting for elevated oil prices, while acknowledging that current Brent levels near $104/barrel embed unsustainable geopolitical premium. The most significant dissent came from Warren Buffett, who argued that the inherent unpredictability of oil prices over a ten-year horizon renders confident valuation impossible, regardless of management quality or current execution — a view echoed by Greenblatt and Wood. This dissent did not prevail because it addressed long-term structural uncertainty rather than rebutting the nearer-term valuation asymmetry Marks identified, though it notably constrained the Committee's conviction. The Committee recommends a **modest initial position** sized to reflect the low score, with disciplined reassessment should commodity prices or cycle indicators deteriorate materially."
+  },
+  {
+   "ticker": "HON",
+   "name": "Honeywell International Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee adopts a BUY position on Honeywell Technologies with a conviction score of 0.333, reflecting a narrow and cautious majority. The dominant argument, advanced by Howard Marks, held that the post-transformation pure-play automation business trades at a depressed trailing multiple while genuine margin expansion is underway, and that cycle-aware positioning favors accumulation before the market fully re-rates the restructured entity. The most significant dissent came from Warren Buffett, who argued that the wide divergence between trailing and forward earnings multiples signals accounting opacity rather than value, and that the durability of Honeywell's competitive moat in automation remains unproven amid formidable rivals such as Siemens, ABB, and Emerson. This dissent did not prevail because the majority judged the transformation discount to be a identifiable, time-limited inefficiency rather than evidence of fundamental weakness. The Committee recommends initiating a modest position with disciplined sizing, contingent on continued evidence of organic revenue growth and margin delivery in forthcoming quarters."
+  },
+  {
+   "ticker": "NKE",
+   "name": "Nike Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns Nike a BUY rating with a conviction score of 0.333, reflecting a narrow and contested majority. The position carried principally on the cycle-based argument advanced by Mr. Marks: that at 1.4× revenue and a $60 billion market capitalization, the market has over-discounted a franchise possessing 27–30% global share, an irreplaceable brand, and $9 billion in cash—creating a stock-specific opportunity at or near trough sentiment. The most significant dissent came from Mr. Buffett, supported by Mr. Greenblatt and Ms. Wood, who argued that free cash flow has collapsed to roughly $1 billion, that a forward P/E of approximately 25× presupposes margin recovery not yet in evidence, and that the turnaround under the new CEO remains deeply uncertain—meaning the earnings trough is not yet visible enough to underwrite the valuation. This dissent did not prevail because the majority judged the franchise's durability sufficient to anchor a probabilistic case that current pessimism exceeds fundamental risk. The Committee recommends a modest, scaled initial position with strict downside discipline."
+  },
+  {
+   "ticker": "AMGN",
+   "name": "Amgen Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Furton Research Investment Committee assigns Amgen Inc. a BUY rating with a conviction score of 0.312. The dominant argument carrying the majority, advanced by Howard Marks, held that at a forward P/E of approximately 16x — below the drug manufacturer industry median — the market is already discounting Amgen's well-known risks, including patent cliffs, elevated debt from the Horizon acquisition, and pipeline uncertainty, thereby offering asymmetric upside for a business generating robust cash flows and 48% non-GAAP operating margins. The most significant dissent came from Warren Buffett and Joel Greenblatt, who argued that a peer-relative discount does not constitute a genuine margin of safety and that Amgen's return on capital, burdened by approximately $60 billion in acquisition-related debt, undermines the quality case at current prices. This dissent did not prevail because the committee judged that the absolute valuation already embeds considerable skepticism, tilting the risk-reward modestly in the investor's favor. The Committee recommends a measured BUY position, sized conservatively to reflect the moderate conviction level."
+  },
+  {
+   "ticker": "DIS",
+   "name": "Walt Disney Co.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns DIS a final position of **BUY** with a conviction score of **0.312**, reflecting a narrow and cautiously held majority. The dominant argument, advanced principally by Mr. Marks, held that at approximately 14× forward earnings, the market insufficiently prices Disney's durable IP flywheel, parks pricing power, and the inflection toward streaming profitability — a classic second-level opportunity where a wonderful business trades at a discount to its normalized earnings power. The most significant dissent, articulated by Mr. Buffett and echoed by Mr. Greenblatt, contended that roughly $40 billion in net debt, secular erosion in linear television, and a PEG ratio of 2.27 leave insufficient margin of safety, meaning the current price already reflects the quality of the franchise. This dissent did not prevail because the majority judged the valuation discount sufficient to compensate for these known risks, though the low conviction score reflects the strength of that counterargument. The Committee recommends a **modest initial position** with disciplined sizing appropriate to the limited margin of conviction."
+  },
+  {
+   "ticker": "MRK",
+   "name": "Merck & Co. Inc.",
+   "screen_date": "2026-08-17",
+   "statement": "After thorough deliberation, the Committee assigns Merck & Co. (MRK) a final score of 0.312 and adopts a **BUY** position. The dominant argument, advanced by Howard Marks and carrying the majority, holds that the well-documented Keytruda patent cliff of 2028 is already substantially discounted in the stock's approximately 15x forward earnings multiple, and that second-level thinking demands we ask not whether the risk exists but whether it is *in the price*. The most significant dissent, articulated by Warren Buffett and supported by Joel Greenblatt and Cathie Wood, contended that Keytruda's outsized revenue concentration renders owner earnings beyond 2028 genuinely unknowable, making the business uninvestable regardless of valuation. This dissent did not prevail because the Committee judged that the current multiple already reflects meaningful deterioration, offering asymmetric upside should the pipeline—including Winrevair and the PCSK9 oral program—partially offset losses. The Committee recommends a measured accumulation of shares at current levels, with the modest conviction score reflecting the legitimate uncertainty the dissenters identified."
+  }
+ ]
+}
