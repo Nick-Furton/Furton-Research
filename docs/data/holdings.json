@@ -1,70 +1,65 @@
 {
-  "date": "2026-08-17",
+  "date": "2026-08-24",
   "holdings": [
     {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 14.34
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 12.35
-    },
-    {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 12.07
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 12.45
     },
     {
       "ticker": "MSFT",
       "name": "Microsoft Corp.",
-      "committee_weight_pct": 9.22
-    },
-    {
-      "ticker": "CRM",
-      "name": "Salesforce Inc.",
-      "committee_weight_pct": 8.56
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 5.81
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 5.81
-    },
-    {
-      "ticker": "CVX",
-      "name": "Chevron Corp.",
-      "committee_weight_pct": 5.48
+      "committee_weight_pct": 12.09
     },
     {
       "ticker": "HON",
       "name": "Honeywell International Inc.",
-      "committee_weight_pct": 5.48
+      "committee_weight_pct": 11.57
     },
     {
-      "ticker": "NKE",
-      "name": "Nike Inc.",
-      "committee_weight_pct": 5.48
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 9.72
     },
     {
-      "ticker": "AMGN",
-      "name": "Amgen Inc.",
-      "committee_weight_pct": 5.14
+      "ticker": "TRV",
+      "name": "Travelers Cos. Inc.",
+      "committee_weight_pct": 9.03
     },
     {
       "ticker": "DIS",
       "name": "Walt Disney Co.",
-      "committee_weight_pct": 5.14
+      "committee_weight_pct": 8.78
     },
     {
-      "ticker": "MRK",
-      "name": "Merck & Co. Inc.",
-      "committee_weight_pct": 5.14
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 8.21
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 7.44
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 6.66
+    },
+    {
+      "ticker": "HD",
+      "name": "Home Depot Inc.",
+      "committee_weight_pct": 5.21
+    },
+    {
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 4.62
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 4.22
     }
   ]
 }
