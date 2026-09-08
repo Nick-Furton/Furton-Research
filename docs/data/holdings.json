@@ -1,70 +1,60 @@
 {
-  "date": "2026-08-31",
+  "date": "2026-09-08",
   "holdings": [
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 12.39
-    },
-    {
-      "ticker": "CRM",
-      "name": "Salesforce Inc.",
-      "committee_weight_pct": 11.82
-    },
     {
       "ticker": "DIS",
       "name": "Walt Disney Co.",
-      "committee_weight_pct": 11.45
-    },
-    {
-      "ticker": "MSFT",
-      "name": "Microsoft Corp.",
-      "committee_weight_pct": 10.22
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 9.87
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 8.86
-    },
-    {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 7.87
-    },
-    {
-      "ticker": "TRV",
-      "name": "Travelers Cos. Inc.",
-      "committee_weight_pct": 5.11
-    },
-    {
-      "ticker": "HD",
-      "name": "Home Depot Inc.",
-      "committee_weight_pct": 4.81
-    },
-    {
-      "ticker": "CVX",
-      "name": "Chevron Corp.",
-      "committee_weight_pct": 4.54
+      "committee_weight_pct": 13.25
     },
     {
       "ticker": "NKE",
       "name": "Nike Inc.",
-      "committee_weight_pct": 4.54
+      "committee_weight_pct": 12.04
     },
     {
-      "ticker": "HON",
-      "name": "Honeywell International Inc.",
-      "committee_weight_pct": 4.25
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 12.0
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 11.45
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 9.94
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 9.59
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 8.84
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "committee_weight_pct": 7.42
+    },
+    {
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 6.62
+    },
+    {
+      "ticker": "CVX",
+      "name": "Chevron Corp.",
+      "committee_weight_pct": 4.73
     },
     {
       "ticker": "MRK",
       "name": "Merck & Co. Inc.",
-      "committee_weight_pct": 4.25
+      "committee_weight_pct": 4.13
     }
   ]
 }
