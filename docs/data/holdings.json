@@ -1,60 +1,85 @@
 {
-  "date": "2026-09-08",
+  "date": "2026-09-14",
   "holdings": [
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 10.87
+    },
     {
       "ticker": "DIS",
       "name": "Walt Disney Co.",
-      "committee_weight_pct": 13.25
+      "committee_weight_pct": 9.46
     },
     {
       "ticker": "NKE",
       "name": "Nike Inc.",
-      "committee_weight_pct": 12.04
-    },
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 12.0
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 11.45
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 9.94
-    },
-    {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 9.59
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 8.84
-    },
-    {
-      "ticker": "MSFT",
-      "name": "Microsoft Corp.",
-      "committee_weight_pct": 7.42
+      "committee_weight_pct": 9.39
     },
     {
       "ticker": "CRM",
       "name": "Salesforce Inc.",
-      "committee_weight_pct": 6.62
+      "committee_weight_pct": 9.37
     },
     {
-      "ticker": "CVX",
-      "name": "Chevron Corp.",
-      "committee_weight_pct": 4.73
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 7.87
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "committee_weight_pct": 7.61
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 7.61
+    },
+    {
+      "ticker": "TRV",
+      "name": "Travelers Cos. Inc.",
+      "committee_weight_pct": 7.03
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "committee_weight_pct": 5.89
+    },
+    {
+      "ticker": "HD",
+      "name": "Home Depot Inc.",
+      "committee_weight_pct": 3.84
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 3.62
+    },
+    {
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 3.62
+    },
+    {
+      "ticker": "MMM",
+      "name": "3M Co.",
+      "committee_weight_pct": 3.62
+    },
+    {
+      "ticker": "AMGN",
+      "name": "Amgen Inc.",
+      "committee_weight_pct": 3.39
+    },
+    {
+      "ticker": "HON",
+      "name": "Honeywell International Inc.",
+      "committee_weight_pct": 3.39
     },
     {
       "ticker": "MRK",
       "name": "Merck & Co. Inc.",
-      "committee_weight_pct": 4.13
+      "committee_weight_pct": 3.39
     }
   ]
 }
