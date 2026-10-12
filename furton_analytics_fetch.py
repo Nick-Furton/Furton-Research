@@ -31,7 +31,7 @@ CACHE = ROOT / "market_cache"
 # Every symbol the account has ever held (union of tradelog positions), plus
 # SPY for the modeled-risk block. HONA (the June spin-off) has no reliable
 # series; the generator carries it at snapshot price per the published note.
-SYMBOLS = ["AMGN", "AMZN", "AXP", "CRM", "CVX", "DIS", "GOOGL", "HD", "HON",
+SYMBOLS = ["AMGN", "AMZN", "AXP", "CRM", "CVX", "DIS", "GOOGL", "GS", "HD", "HON",
            "JNJ", "JPM", "KO", "MCD", "MMM", "MRK", "MSFT", "NKE", "NVDA", "SHW",
            "TRV", "UNH", "V", "VZ", "SPY"]
 YAHOO_SYMBOLS = ["^DJI"]
