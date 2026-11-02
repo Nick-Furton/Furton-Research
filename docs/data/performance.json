@@ -94,6 +94,11 @@
       "date": "2026-10-26",
       "account_value": 11722.03,
       "dow_level": 52397.4
+    },
+    {
+      "date": "2026-11-02",
+      "account_value": 11753.31,
+      "dow_level": 52191.2
     }
   ]
 }
