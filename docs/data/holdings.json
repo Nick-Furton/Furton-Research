@@ -1,85 +1,60 @@
 {
-  "date": "2026-11-02",
+  "date": "2026-11-09",
   "holdings": [
-    {
-      "ticker": "TRV",
-      "name": "Travelers Cos. Inc.",
-      "committee_weight_pct": 9.8
-    },
-    {
-      "ticker": "MCD",
-      "name": "McDonald's Corp.",
-      "committee_weight_pct": 9.52
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 9.47
-    },
-    {
-      "ticker": "DIS",
-      "name": "Walt Disney Co.",
-      "committee_weight_pct": 8.9
-    },
-    {
-      "ticker": "MSFT",
-      "name": "Microsoft Corp.",
-      "committee_weight_pct": 7.88
-    },
     {
       "ticker": "GOOGL",
       "name": "Alphabet Inc.",
-      "committee_weight_pct": 7.39
-    },
-    {
-      "ticker": "CAT",
-      "name": "Caterpillar Inc.",
-      "committee_weight_pct": 6.88
-    },
-    {
-      "ticker": "HON",
-      "name": "Honeywell International Inc.",
-      "committee_weight_pct": 6.53
-    },
-    {
-      "ticker": "AMZN",
-      "name": "Amazon.com Inc.",
-      "committee_weight_pct": 5.9
-    },
-    {
-      "ticker": "CRM",
-      "name": "Salesforce Inc.",
-      "committee_weight_pct": 5.66
-    },
-    {
-      "ticker": "GS",
-      "name": "Goldman Sachs Group Inc.",
-      "committee_weight_pct": 3.89
-    },
-    {
-      "ticker": "JNJ",
-      "name": "Johnson & Johnson",
-      "committee_weight_pct": 3.89
+      "committee_weight_pct": 12.99
     },
     {
       "ticker": "UNH",
       "name": "UnitedHealth Group Inc.",
-      "committee_weight_pct": 3.89
+      "committee_weight_pct": 11.69
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 11.37
+    },
+    {
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 10.62
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com Inc.",
+      "committee_weight_pct": 9.74
     },
     {
       "ticker": "NVDA",
       "name": "NVIDIA Corp.",
-      "committee_weight_pct": 3.62
+      "committee_weight_pct": 9.64
     },
     {
-      "ticker": "AMGN",
-      "name": "Amgen Inc.",
-      "committee_weight_pct": 3.4
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "committee_weight_pct": 9.4
     },
     {
-      "ticker": "NKE",
-      "name": "Nike Inc.",
-      "committee_weight_pct": 3.4
+      "ticker": "MCD",
+      "name": "McDonald's Corp.",
+      "committee_weight_pct": 8.88
+    },
+    {
+      "ticker": "CRM",
+      "name": "Salesforce Inc.",
+      "committee_weight_pct": 6.75
+    },
+    {
+      "ticker": "SHW",
+      "name": "Sherwin-Williams Co.",
+      "committee_weight_pct": 4.59
+    },
+    {
+      "ticker": "GS",
+      "name": "Goldman Sachs Group Inc.",
+      "committee_weight_pct": 4.33
     }
   ]
 }
