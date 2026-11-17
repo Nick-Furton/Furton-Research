@@ -228,6 +228,24 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ── Dates ──────────────────────────────────────────────────────────────────
+// Today's LOCAL calendar date, YYYY-MM-DD. Never toISOString() for a date:
+// that is UTC, which already reads tomorrow after 7 PM Eastern (8 PM in
+// summer), so an evening ticket, export or entry would be dated a day after
+// the screen the server archived under the local date (screen_<date>.json).
+function localDate(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// A YYYY-MM-DD date plus n calendar days, in local calendar arithmetic. (The
+// old parse-as-UTC, add-local, print-UTC chain landed a day short across the
+// March daylight-saving change: 2026-03-02 + 7 came out 2026-03-08.)
+function addDays(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return localDate(new Date(y, m - 1, d + n));
+}
+
 let entries = [];   // [{date, acct, dow, div}]  div = dividends received this period ($)
 
 const RISK_FREE_ANNUAL  = 0.038;   // documented constant for Sharpe excess return (3.8%)
@@ -327,7 +345,7 @@ async function load() {
     if (r && r.value) entries = JSON.parse(r.value);
   } catch (e) { entries = []; }
   // default date = today
-  document.getElementById('inDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('inDate').value = localDate();
   render();
 }
 async function save() {
@@ -362,8 +380,7 @@ function addEntry() {
   document.getElementById('inDow').value = '';
   document.getElementById('inDiv').value = '';
   // advance default date by 7 days for convenience
-  const d = new Date(date); d.setDate(d.getDate() + 7);
-  document.getElementById('inDate').value = d.toISOString().split('T')[0];
+  document.getElementById('inDate').value = addDays(date, 7);
   save(); render();
 }
 
@@ -576,14 +593,14 @@ function exportJSON() {
       committee_total_return_pct: +r.acctRet.toFixed(3), committee_price_return_pct: +r.priceRet.toFixed(3),
       dow_return_pct: +r.dowRet.toFixed(3), alpha_pct: +r.alpha.toFixed(3) })),
   };
-  downloadFile(JSON.stringify(record, null, 2), `weekly_records/furton_performance_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+  downloadFile(JSON.stringify(record, null, 2), `weekly_records/furton_performance_${localDate()}.json`, 'application/json');
 }
 
 function exportCSV() {
   const rows = computed();
   let csv = 'date,account_value,dow_level,dividends,committee_total_return_pct,committee_price_return_pct,dow_return_pct,alpha_pct\n';
   csv += rows.map(r => `${r.date},${r.acct},${r.dow},${r.div || 0},${r.acctRet.toFixed(3)},${r.priceRet.toFixed(3)},${r.dowRet.toFixed(3)},${r.alpha.toFixed(3)}`).join('\n');
-  downloadFile(csv, `weekly_records/furton_performance_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  downloadFile(csv, `weekly_records/furton_performance_${localDate()}.csv`, 'text/csv');
 }
 
 function downloadFile(content, name, type) {

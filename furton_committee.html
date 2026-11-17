@@ -697,6 +697,16 @@ function switchTab(tab) {
 
 const SERVER = 'http://localhost:8765';
 
+// ── Dates ──────────────────────────────────────────────────────────────────
+// Today's LOCAL calendar date, YYYY-MM-DD. Never toISOString() for a date:
+// that is UTC, which already reads tomorrow after 7 PM Eastern (8 PM in
+// summer), so an evening ticket, export or entry would be dated a day after
+// the screen the server archived under the local date (screen_<date>.json).
+function localDate(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let state = {
   ticker:       '',
@@ -1413,7 +1423,7 @@ function exportScreener() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `furton_dow30_screener_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `furton_dow30_screener_${localDate()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
