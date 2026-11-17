@@ -372,6 +372,16 @@
 <div id="restoreToast" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--paper-card);border:1px solid var(--buy);color:var(--ink);padding:12px 20px;font-size:11px;z-index:100;"></div>
 
 <script>
+// ── Dates ──────────────────────────────────────────────────────────────────
+// Today's LOCAL calendar date, YYYY-MM-DD. Never toISOString() for a date:
+// that is UTC, which already reads tomorrow after 7 PM Eastern (8 PM in
+// summer), so an evening ticket, export or entry would be dated a day after
+// the screen the server archived under the local date (screen_<date>.json).
+function localDate(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 // ── Weekly rebalance reconciliation ────────────────────────────────────────
 const REBAL_THRESHOLD_PCT = 3;   // drift band: only trim/add held positions off target by 3+ pts
 const CASH_DEPLOY_FLOOR    = 0.02; // ignore leftover cash below 2% of portfolio (rounding noise)
@@ -569,7 +579,7 @@ function buildTicket(targets) {
 
   lastTicket = {
     actions, totalBase, cash, projectedCash, reinvestNote,
-    date: new Date().toISOString().split('T')[0],
+    date: localDate(),
   };
   renderTicket();
 }
@@ -662,7 +672,7 @@ function applyAllTicket() {
 }
 
 function _applyOne(a) {
-  const today = (lastTicket && lastTicket.date) || new Date().toISOString().split('T')[0];
+  const today = (lastTicket && lastTicket.date) || localDate();
   if (a.action === 'SELL' && a.kind === 'sell-all') {
     // Realized P&L on the full exit = proceeds (market value, a.amount) − cost basis.
     // The cost portion returns to cash automatically as the holding leaves
@@ -685,7 +695,7 @@ function _applyOne(a) {
         id: Date.now() + Math.random(),
         ticker: a.ticker, name: a.name, position: 'BUY',
         weight: 0, refPrice: 0, fillPrice: 0, amount: Math.round(a.amount), shares: 0,
-        currentPrice: null, date: new Date().toISOString().split('T')[0], pendingFill: true,
+        currentPrice: null, date: localDate(), pendingFill: true,
       });
     }
   } else if (a.kind === 'adjust') {
@@ -853,7 +863,7 @@ function addTrade() {
     amount,
     shares: amount / fillPrice,
     currentPrice: fillPrice,  // defaults to fill until updated
-    date: new Date().toISOString().split('T')[0],
+    date: localDate(),
   });
 
   ['inTicker', 'inWeight', 'inRefPrice', 'inFillPrice', 'inAmount'].forEach(id => document.getElementById(id).value = '');
@@ -885,7 +895,7 @@ function importScreener(event) {
           amount: Math.round(dollarAmount),
           shares: 0,
           currentPrice: null,
-          date: new Date().toISOString().split('T')[0],
+          date: localDate(),
           pendingFill: true,
         });
         added++;
@@ -991,7 +1001,7 @@ function syncFromSchwabCSV(event) {
       // the broker's actual balance with one ledger entry, which books the dividends
       // Schwab reinvested silently (they grow cost basis past the starting capital
       // and otherwise drive the log's cash negative).
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDate();
       let updated = 0, added = 0, lockedRefreshed = 0; const dupes = [];
       const csvTk = new Set(csvPos.map(p => p.ticker));
       for (const p of csvPos) {
@@ -1018,7 +1028,7 @@ function syncFromSchwabCSV(event) {
             weight: 0, refPrice: 0, fillPrice: fill,
             amount: p.cost != null ? Math.round(p.cost) : Math.round(fill * qty),
             shares: qty, currentPrice: p.price != null ? p.price : fill,
-            date: new Date().toISOString().split('T')[0],
+            date: localDate(),
             pendingFill: !(qty > 0 && fill > 0),
           });
           added++;
@@ -1254,7 +1264,7 @@ function recordCashEvent() {
   if (v === null) return;
   const amt = parseNum(v);
   if (!amt) return;
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDate();
   cashEvents.push({
     date, type: amt >= 0 ? 'dividend' : 'cash', amount: amt,
     note: amt >= 0 ? 'Dividend / cash in — reinvested at next rebalance' : 'Cash withdrawn',
@@ -1301,7 +1311,7 @@ function exportLog() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `weekly_records/furton_tradelog_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `weekly_records/furton_tradelog_${localDate()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 
@@ -1360,7 +1370,7 @@ function restoreLog(event) {
         amount: p.amount ?? 0,
         shares: p.shares ?? 0,
         currentPrice: p.current_price ?? p.currentPrice ?? null,
-        date: p.date || new Date().toISOString().split('T')[0],
+        date: p.date || localDate(),
         pendingFill: (p.fill_price ?? p.fillPrice ?? 0) <= 0,
       }));
       if (data.starting_capital) startingCapital = data.starting_capital;
