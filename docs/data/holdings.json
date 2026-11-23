@@ -1,70 +1,70 @@
 {
-  "date": "2026-11-18",
+  "date": "2026-11-23",
   "holdings": [
-    {
-      "ticker": "GOOGL",
-      "name": "Alphabet Inc.",
-      "committee_weight_pct": 10.2
-    },
-    {
-      "ticker": "AXP",
-      "name": "American Express Co.",
-      "committee_weight_pct": 9.95
-    },
-    {
-      "ticker": "DIS",
-      "name": "Walt Disney Co.",
-      "committee_weight_pct": 9.88
-    },
     {
       "ticker": "AMZN",
       "name": "Amazon.com Inc.",
-      "committee_weight_pct": 8.62
+      "committee_weight_pct": 11.68
     },
     {
       "ticker": "CRM",
       "name": "Salesforce Inc.",
-      "committee_weight_pct": 8.28
+      "committee_weight_pct": 11.68
     },
     {
-      "ticker": "NVDA",
-      "name": "NVIDIA Corp.",
-      "committee_weight_pct": 8.11
-    },
-    {
-      "ticker": "TRV",
-      "name": "Travelers Cos. Inc.",
-      "committee_weight_pct": 8.04
-    },
-    {
-      "ticker": "NKE",
-      "name": "Nike Inc.",
-      "committee_weight_pct": 7.84
-    },
-    {
-      "ticker": "CAT",
-      "name": "Caterpillar Inc.",
-      "committee_weight_pct": 7.43
-    },
-    {
-      "ticker": "HON",
-      "name": "Honeywell International Inc.",
-      "committee_weight_pct": 7.43
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "committee_weight_pct": 11.68
     },
     {
       "ticker": "MSFT",
       "name": "Microsoft Corp.",
-      "committee_weight_pct": 5.88
+      "committee_weight_pct": 10.55
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "committee_weight_pct": 10.35
+    },
+    {
+      "ticker": "HON",
+      "name": "Honeywell International Inc.",
+      "committee_weight_pct": 9.81
+    },
+    {
+      "ticker": "UNH",
+      "name": "UnitedHealth Group Inc.",
+      "committee_weight_pct": 7.56
+    },
+    {
+      "ticker": "AXP",
+      "name": "American Express Co.",
+      "committee_weight_pct": 7.23
     },
     {
       "ticker": "MCD",
       "name": "McDonald's Corp.",
-      "committee_weight_pct": 4.41
+      "committee_weight_pct": 4.12
     },
     {
-      "ticker": "HD",
-      "name": "Home Depot Inc.",
-      "committee_weight_pct": 3.92
+      "ticker": "CVX",
+      "name": "Chevron Corp.",
+      "committee_weight_pct": 3.89
+    },
+    {
+      "ticker": "NKE",
+      "name": "Nike Inc.",
+      "committee_weight_pct": 3.89
+    },
+    {
+      "ticker": "SHW",
+      "name": "Sherwin-Williams Co.",
+      "committee_weight_pct": 3.89
+    },
+    {
+      "ticker": "DIS",
+      "name": "Walt Disney Co.",
+      "committee_weight_pct": 3.65
     }
   ]
 }
